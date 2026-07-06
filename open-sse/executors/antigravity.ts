@@ -480,6 +480,24 @@ function sanitizeAntigravityGeminiRequest(
   return clean;
 }
 
+// Google Cloud Code (Antigravity) rejects HARM_CATEGORY_CIVIC_INTEGRITY in
+// safety_settings ("GenerateContentRequest.safety_settings[N]: element predicate
+// failed") — unlike the public Gemini API, which accepts it. Strip unsupported
+// categories so the all-OFF defaults still apply to the categories Cloud Code accepts.
+const ANTIGRAVITY_UNSUPPORTED_SAFETY_CATEGORIES = new Set<string>([
+  "HARM_CATEGORY_CIVIC_INTEGRITY",
+]);
+function filterAntigravitySafetySettings(settings: unknown): unknown {
+  if (!Array.isArray(settings)) return settings;
+  return settings.filter((entry) => {
+    const category =
+      entry && typeof entry === "object"
+        ? (entry as Record<string, unknown>).category
+        : undefined;
+    return typeof category !== "string" || !ANTIGRAVITY_UNSUPPORTED_SAFETY_CATEGORIES.has(category);
+  });
+}
+
 export class AntigravityExecutor extends BaseExecutor {
   constructor() {
     super("antigravity", PROVIDERS.antigravity);
@@ -545,6 +563,11 @@ export class AntigravityExecutor extends BaseExecutor {
     // its Google account already owns a Cloud Code project (the OAuth-time loadCodeAssist
     // returned empty/transiently failed). Mirror the Cloud Code bootstrap to recover it
     // here — the helper memoizes per access-token, so this is a one-time round-trip.
+    // Auto-discover a missing projectId via loadCodeAssist (+ onboardUser for a
+    // project-less account) before failing (#2334/#2541). Only runs when no
+    // projectId is stored, so the hot path stays fast and a not-yet-onboarded
+    // account fails FAST (403 → recoverable via errorClassifier) instead of
+    // hanging on onboardUser retries. The helper memoizes per access-token.
     if (!projectId && credentials?.accessToken) {
       const discovered = await ensureAntigravityProjectAssigned(credentials.accessToken);
       if (discovered) projectId = discovered;
@@ -652,7 +675,9 @@ export class AntigravityExecutor extends BaseExecutor {
       // Previously this was `undefined`, which JSON.stringify drops, so Google Cloud Code
       // applied its server-side defaults that false-flag benign technical prompts as
       // `prohibited_content` (HTTP 200 + blocked body → terminal combo failover).
-      safetySettings: normalizedRequest?.safetySettings ?? DEFAULT_SAFETY_SETTINGS,
+      safetySettings: filterAntigravitySafetySettings(
+        normalizedRequest?.safetySettings ?? DEFAULT_SAFETY_SETTINGS
+      ),
       toolConfig:
         Array.isArray(normalizedRequest?.tools) && normalizedRequest.tools.length > 0
           ? { functionCallingConfig: { mode: "VALIDATED" } }
@@ -1281,8 +1306,18 @@ export class AntigravityExecutor extends BaseExecutor {
                 `Category: ${category}, Decision: ${decision.kind} — ${decision.reason}`
               );
 
-              if (decision.kind === "full_quota_exhausted" && retryMs) {
+              // A "quota exhausted on THIS MODEL" 429 is per-model, not account-wide:
+              // rely on the per-model/family lock (getModelLockKey → family:gemini-pro) and
+              // do NOT persist an account-wide cooldown that would also block the account's
+              // Flash-tier models, which have their own separate quota. (#antigravity-quota-tier)
+              const isPerModelQuota = /\bthis model\b/i.test(errorMessage);
+              if (decision.kind === "full_quota_exhausted" && retryMs && !isPerModelQuota) {
                 markConnectionQuotaExhausted(accountId, retryMs);
+              } else if (isPerModelQuota && retryMs) {
+                log?.debug?.(
+                  "AG_429",
+                  "Per-model quota exhaustion — scoping cooldown to the model family, not the whole account"
+                );
               }
 
               const creditsAlreadyInjected =

@@ -309,6 +309,10 @@ export default function ProviderModalsPanel({
       )}
       {!isUpstreamProxyProvider && (
         <EditConnectionModal
+          // Remount per connection so the name/priority prefill is applied AT
+          // MOUNT rather than via a post-mount effect — removes the controlled-input
+          // prefill race that let an edit append instead of replace the name.
+          key={selectedConnection?.id ?? "edit"}
           isOpen={showEditModal}
           connection={selectedConnection}
           providerId={providerId}

@@ -278,7 +278,14 @@ test.describe("Providers management", () => {
 
     await page.getByTitle(/^edit$/i).click();
     const editDialog = page.getByRole("dialog");
-    await editDialog.getByLabel(/name/i).fill("Primary OpenAI Edited");
+    // The edit field is PRE-FILLED with the existing name; Playwright's fill()
+    // can race the controlled-input prefill and append instead of replace
+    // ("Primary OpenAIPrimary OpenAI Edited"). Force-clear + let React settle first.
+    const editName = editDialog.getByLabel(/name/i);
+    await editName.click();
+    await editName.fill("");
+    await expect(editName).toHaveValue("");
+    await editName.fill("Primary OpenAI Edited");
     await editDialog.getByLabel(/priority/i).fill("3");
     await editDialog.getByRole("button", { name: /^save$/i }).click();
 

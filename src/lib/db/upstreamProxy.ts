@@ -1,5 +1,9 @@
 /** Upstream proxy config persistence for upstream_proxy_config table. */
 import { getDbInstance } from "./core";
+import {
+  isPrivateHost as isPrivateHostCanonical,
+  isCloudMetadataHost,
+} from "@/shared/network/outboundUrlGuard";
 
 interface UpstreamProxyConfig {
   id: number;
@@ -34,23 +38,13 @@ function toRecord(value: unknown): Record<string, unknown> {
 const BLOCKED_HOSTNAMES = ["metadata.google.internal", "169.254.169.254", "metadata.aws.internal"];
 
 function isPrivateHost(hostname: string): boolean {
-  // CLIProxyAPI runs on localhost:8317 — allow loopback explicitly
+  // CLIProxyAPI runs on localhost:8317 — allow loopback explicitly.
   if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") return false;
   if (BLOCKED_HOSTNAMES.includes(hostname)) return true;
-  if (
-    /^10\./.test(hostname) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
-    /^192\.168\./.test(hostname)
-  )
-    return true;
-  if (
-    /^0\./.test(hostname) ||
-    /^127\./.test(hostname) ||
-    /^224\./.test(hostname) ||
-    /^169\.254\./.test(hostname)
-  )
-    return true;
-  return false;
+  // L7: delegate the private/metadata IP checks to the canonical guard instead of
+  // a hand-rolled copy — that copy missed CGNAT (100.64/10), IPv6 ULA (fd00::/8),
+  // and IPv6 link-local (fe80::), which are all SSRF-relevant.
+  return isCloudMetadataHost(hostname) || isPrivateHostCanonical(hostname);
 }
 
 export function validateProxyUrl(

@@ -6,10 +6,26 @@ import { fileURLToPath } from "node:url";
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const distDir = process.env.NEXT_DIST_DIR || ".build/next";
 const projectRoot = dirname(fileURLToPath(import.meta.url));
-const scriptSrc =
-  process.env.NODE_ENV === "development"
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:"
-    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:";
+const isProdBuild = process.env.NODE_ENV === "production";
+// Extra browser connect origins for non-loopback (LAN / Tailscale) deployments.
+// Prod ships a tight connect-src by default; operators reaching OmniRoute over a
+// LAN/Tailscale host opt their host in here (space-separated) instead of the app
+// shipping a blanket `https: ws: wss:` allowance to the world. (#5083)
+const extraConnectSrc = (process.env.OMNIROUTE_CSP_CONNECT_SRC || "").trim();
+// Dev keeps `'unsafe-eval'` for React Refresh / fast-refresh tooling. Prod drops it:
+// Next.js and React need no runtime eval, so removing it shrinks the XSS blast radius.
+// `'unsafe-inline'` is retained until a nonce/hash migration lands (tracked separately).
+const scriptSrc = isProdBuild
+  ? "script-src 'self' 'unsafe-inline' blob:"
+  : "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:";
+// Loopback origins are always allowed (the local standalone dashboard is served on
+// localhost and opens a same-host Live WS). Dev additionally allows the broad
+// `https: ws: wss:` schemes; prod does NOT — it stays loopback + opt-in extras.
+const loopbackConnect =
+  "'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*";
+const connectSrc = isProdBuild
+  ? `connect-src ${[loopbackConnect, extraConnectSrc].filter(Boolean).join(" ")}`
+  : `connect-src ${loopbackConnect} https: ws: wss:`;
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -21,11 +37,7 @@ const contentSecurityPolicy = [
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob:",
-  // `ws:` is permitted scheme-wide (mirroring the bare `wss:` already allowed) so the
-  // dashboard can open `ws://<lan-or-tailscale-host>:*` to its own Live WS server when
-  // OmniRoute is reached from a non-loopback host. Same-origin HTTP fetches stay covered
-  // by `'self'`; the loopback origins remain listed explicitly for clarity. (#5083)
-  "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https: ws: wss:",
+  connectSrc,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
 ].join("; ");

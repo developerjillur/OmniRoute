@@ -1,0 +1,5 @@
+{
+  "_comment": "TypeScript-error ratchet baseline. direction: down (can only shrink). Update via `npm run check:tsc-ratchet -- --update` ONLY when the measured count drops. Owner: OmniRoute maintainers. Removal target: reach 0, then re-enable next.config typescript.ignoreBuildErrors:false.",
+  "value": 2965,
+  "direction": "down"
+}

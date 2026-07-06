@@ -8,6 +8,7 @@ import {
   spawnWithForwardedSignals,
 } from "../build/runtime-env.mjs";
 import { bootstrapEnv } from "../build/bootstrap-env.mjs";
+import { evaluatePublicBindSafety } from "../build/startupGuard.mjs";
 
 const env = bootstrapEnv();
 const runtimePorts = resolveRuntimePorts(env);
@@ -20,6 +21,17 @@ const childEnv = withRuntimePortEnv(env, runtimePorts);
 const maxOldSpaceMb = resolveMaxOldSpaceMb(childEnv.OMNIROUTE_MEMORY_MB);
 childEnv.NODE_OPTIONS =
   `${childEnv.NODE_OPTIONS || ""} --max-old-space-size=${maxOldSpaceMb}`.trim();
+
+// Security (QA P0 + SECURITY_AUDIT H2): refuse to boot an insecure PUBLIC
+// production bind (no API-key enforcement, or the default CHANGEME dashboard
+// password). Logic lives in the pure, unit-tested `evaluatePublicBindSafety`.
+{
+  const bindSafety = evaluatePublicBindSafety(childEnv);
+  if (bindSafety.refuse) {
+    console.error(`[omniroute] Refusing to start: ${bindSafety.reason}`);
+    process.exit(1);
+  }
+}
 
 // Prefer the WS-aware wrapper (server-ws.mjs) over the bare Next standalone
 // server.js: it installs the trusted peer-IP stamp (scripts/dev/peer-stamp.mjs)
