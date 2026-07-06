@@ -1,15 +1,39 @@
 {
   "_comment": "NexaLance fork customization registry. 'upstream-candidate' files are generic fixes worth PRing to diegosouzapw/OmniRoute (shrinks the fork); 'nexa-specific' stay forever. 'overlay-new' files have ZERO merge-conflict risk.",
-  "upstreamBase": "1bda6c15dc88",
+  "upstreamBase": "3ddcee6369c5",
   "productionBranch": "nexalance",
   "counts": {
-    "total": 50,
-    "modifiedUpstream": 37,
-    "overlayNew": 13,
-    "upstreamCandidates": 46,
-    "nexaSpecific": 4
+    "total": 56,
+    "modifiedUpstream": 38,
+    "overlayNew": 18,
+    "upstreamCandidates": 47,
+    "nexaSpecific": 9
   },
   "files": [
+    {
+      "file": ".github/workflows/nexa-upstream-sync.yml",
+      "class": "nexa-specific",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": ".gitignore",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": ".nexa/config.json",
+      "class": "nexa-specific",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": ".nexa/customizations.json",
+      "class": "nexa-specific",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
     {
       "file": "bin/cli/api.mjs",
       "class": "upstream-candidate",
@@ -157,6 +181,18 @@
     {
       "file": "scripts/docs/annotate-loopback-only.mjs",
       "class": "upstream-candidate",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "scripts/nexa-sync/gen-manifest.mjs",
+      "class": "nexa-specific",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "scripts/nexa-sync/nexa-sync.mjs",
+      "class": "nexa-specific",
       "kind": "overlay-new",
       "conflictRisk": "none"
     },
