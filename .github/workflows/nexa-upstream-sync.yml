@@ -49,6 +49,10 @@ jobs:
           set +e
           node scripts/nexa-sync/nexa-sync.mjs --keep
           echo "code=$?" >> "$GITHUB_OUTPUT"
+          # Read the orchestrator's precise status so downstream steps can tell
+          # "up-to-date" (nothing to do) apart from "clean-validated" (branch to PR).
+          STATUS=$(node -e 'try{process.stdout.write((require("./.nexa/last-sync.json").status)||"")}catch(e){}')
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
         continue-on-error: true
 
       - name: Publish report to job summary
@@ -57,9 +61,11 @@ jobs:
           REPORT=$(ls -t .nexa/reports/*.md 2>/dev/null | head -1)
           if [ -n "$REPORT" ]; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
 
-      # Clean + validated → push the sandbox branch and open an auto-mergeable PR.
+      # Clean + validated (a real new-upstream merge, branch exists) → push it and
+      # open a PR. Gated on status, NOT exit code: the orchestrator also exits 0
+      # when already up-to-date, in which case there is no branch and nothing to do.
       - name: Open PR (clean + validated)
-        if: steps.sync.outputs.code == '0'
+        if: steps.sync.outputs.status == 'clean-validated'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -70,9 +76,9 @@ jobs:
             --title "Upstream sync $UP (clean + validated ✅)" \
             --body "Automated: clean merge of diegosouzapw/OmniRoute@$UP, all customization regression tests green. Safe to merge." || true
 
-      # Conflicts (20) or validation failure (30) → open an issue for a human.
+      # Conflicts or validation failure → open an issue for a human.
       - name: Open issue (needs human resolution)
-        if: steps.sync.outputs.code == '20' || steps.sync.outputs.code == '30'
+        if: steps.sync.outputs.status == 'conflicts' || steps.sync.outputs.status == 'validation-failed'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

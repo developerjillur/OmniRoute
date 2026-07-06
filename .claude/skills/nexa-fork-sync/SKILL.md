@@ -63,9 +63,33 @@ Every edit we made to an upstream file is tagged and surgical. A conflict = both
 - **tsc-ratchet fails after an upstream merge:** upstream may add TS errors — that's THEIRS, not our regression. Re-baseline with `--update` after a validated land.
 - **node_modules in the sandbox worktree:** the orchestrator symlinks it; a manual sandbox needs `ln -s ../../node_modules node_modules` before validating.
 
-## Shrink the fork over time
+## Shrink the fork over time (upstream contribution)
 
-`.nexa/customizations.json` marks generic fixes `upstream-candidate` (currently 47). Open PRs for those to `diegosouzapw/OmniRoute`; once merged upstream they leave our maintenance set and can never conflict again.
+`.nexa/customizations.json` marks generic fixes `class:"upstream-candidate"` (currently 49). PR the cleanest, genuinely-generic ones to `diegosouzapw/OmniRoute`; once merged upstream they arrive via the next sync and leave our maintenance set forever. **Do NOT fire one PR per candidate** — many are coupled or NexaConnect-flavored; send a few themed, self-contained PRs, each cut from **pristine `upstream-main`** (never `nexalance`, which carries our other changes):
+
+```bash
+git worktree add -b upstream-pr/<slug> /tmp/omni-pr upstream-main    # pristine base
+git -C /tmp/omni-pr checkout nexalance -- <only-this-fix's-files>    # our version of just those files (stages them)
+git -C /tmp/omni-pr diff --cached --stat                            # MUST equal exactly the fix, nothing else
+ln -s "$PWD/node_modules" /tmp/omni-pr/node_modules                 # so tsx/tests resolve in the worktree
+# add a FOCUSED test → tests/unit/<name>.test.ts (node:test; import the module by RELATIVE path so the
+# repo test:unit glob picks it up), then run just it to confirm GREEN:
+#   node --import tsx --import ./open-sse/utils/setupPolyfill.ts --import ./tests/_setup/isolateDataDir.ts \
+#     --test --test-force-exit tests/unit/<name>.test.ts
+git -C /tmp/omni-pr add -A && git -C /tmp/omni-pr commit -m "fix(scope): …"
+git -C /tmp/omni-pr push -u origin upstream-pr/<slug>               # push to OUR fork (origin)
+gh pr create --repo diegosouzapw/OmniRoute --base main \
+  --head developerjillur:upstream-pr/<slug> --title "…" --body "…"  # gh is authed (repo scope, SSH)
+git worktree remove --force /tmp/omni-pr                            # branch stays on origin as the PR head
+```
+
+Why `checkout nexalance -- <file>` yields exactly the fix: our version of an **unconflicted** file = upstream v3.8.45 + only our edit (the v3.8.45 merge conflicted on just 4 files), so applying it onto `upstream-main` reproduces the fix alone — but always eyeball `diff --cached --stat` to be sure. **Proven end-to-end:** PRs #6451 (Set-Cookie redaction) + #6452 (Antigravity 403); full worked example in reference.md §8.
+
+## Fork CI (already configured — don't redo)
+
+- **Default branch = `nexalance`** — required: GitHub only honors the workflow's `schedule` + `workflow_dispatch` from the default branch. (The fork forked upstream's `main`; we switched it.)
+- Actions: **read/write** permissions + **"Allow GitHub Actions to create and approve pull requests"** = ON (so the workflow's `gh pr create`/`gh issue create` work).
+- `.github/workflows/nexa-upstream-sync.yml` runs **daily 06:17 UTC** + on demand (`gh workflow run nexa-upstream-sync.yml`, or the Actions tab). It opens a green PR on a `clean-validated` sync or an issue on conflicts/validation-fail — gated on the orchestrator's `.nexa/last-sync.json` **status**, not the exit code, so an up-to-date run cleanly no-ops.
 
 ## Deep reference
 

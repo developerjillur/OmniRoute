@@ -71,3 +71,34 @@ Result: fork = v3.8.45 + all customizations, validated, deployed, `nexa:status` 
 ## 7. Validation gate (`.nexa/config.json` → validate[])
 
 1. `npm run typecheck:core` · 2. `check-tsc-ratchet --ratchet` · 3. the customization regression tests. Extend this list when you add a customization + its test, so the sandbox always proves our behavior survived the merge.
+
+## 8. Upstream contribution (shrink-the-fork) — worked example
+
+Goal: move a generic fix from our maintenance set into upstream so it can never conflict again. Cut each PR from **pristine `upstream-main`**, not `nexalance` (which carries our other changes). Proven 2026-07-07 with two PRs to `diegosouzapw/OmniRoute`:
+
+- **#6451** — `fix(mitm): redact Set-Cookie in sanitizeHeaders` (security). Files: `src/mitm/sanitizeHeaders.ts` + `src/mitm/inspector/agentBridgeHook.ts` + a new focused test `tests/unit/mitm-sanitize-headers.test.ts`.
+- **#6452** — `fix(providers): treat recoverable Antigravity/Cloud-Code 403s as project errors` (reliability). Files: `open-sse/services/errorClassifier.ts` + `tests/unit/errorclassifier-antigravity-403.test.ts` (incl. a control proving real bans still classify as `ACCOUNT_DEACTIVATED`).
+
+Exact recipe (per PR):
+
+```bash
+git worktree add -b upstream-pr/<slug> /tmp/omni-pr upstream-main
+git -C /tmp/omni-pr checkout nexalance -- <fix's source files>       # our version = upstream + only this fix
+git -C /tmp/omni-pr diff --cached --stat                             # sanity: exactly the fix
+ln -s "$PWD/node_modules" /tmp/omni-pr/node_modules
+# write tests/unit/<name>.test.ts (node:test, relative import) and run ONLY it:
+( cd /tmp/omni-pr && node --import tsx --import ./open-sse/utils/setupPolyfill.ts \
+    --import ./tests/_setup/isolateDataDir.ts --test --test-force-exit tests/unit/<name>.test.ts )
+git -C /tmp/omni-pr add -A && git -C /tmp/omni-pr commit -m "fix(scope): …"
+git -C /tmp/omni-pr push -u origin upstream-pr/<slug>
+gh pr create --repo diegosouzapw/OmniRoute --base main --head developerjillur:upstream-pr/<slug> --title "…" --body "…"
+git worktree remove --force /tmp/omni-pr
+```
+
+Gotchas learned: (a) `git checkout <ref> -- <paths>` **stages** the files, so use `diff --cached` to inspect. (b) Put the test in `tests/unit/**` (that's the `test:unit` glob); `open-sse/**/__tests__` is run by a different script. (c) `maskSecret` is format-aware (Bearer/`sk-`/≥40-char) — arbitrary cookie values need **full** redaction, which is exactly why #6451 exists. (d) Keep each PR one concern; upstream reviews small self-contained diffs fastest.
+
+## 9. Fork CI configuration (already applied — don't redo)
+
+- **Default branch switched `main` → `nexalance`** (Settings → General → Default branch). Required: GitHub only runs a workflow's `schedule`/`workflow_dispatch` from the default branch, and our workflow lives on `nexalance`.
+- **Actions → General:** "Allow all actions"; Workflow permissions = **Read and write**; **"Allow GitHub Actions to create and approve pull requests"** = ON.
+- Verified live: manual `gh workflow run nexa-upstream-sync.yml` (or Actions tab) → run succeeded (npm ci ✓, orchestrator early-exited "up to date"), no spurious PR/issue. The PR/issue steps are gated on `.nexa/last-sync.json` **status** (`clean-validated` → PR; `conflicts`/`validation-failed` → issue), so up-to-date runs no-op cleanly.
