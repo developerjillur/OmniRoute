@@ -166,6 +166,13 @@ const EXTRA_MODULE_ENTRIES = [
     dest: ["build", "bootstrap-env.mjs"],
   },
   {
+    // NEXA: run-standalone.mjs imports ../build/startupGuard.mjs (the public-bind
+    // safety guard); it MUST be synced to build/ or the standalone crashes on boot.
+    label: "startupGuard script",
+    src: ["scripts", "build", "startupGuard.mjs"],
+    dest: ["build", "startupGuard.mjs"],
+  },
+  {
     label: "healthcheck script",
     src: ["scripts", "dev", "healthcheck.mjs"],
     dest: ["healthcheck.mjs"],
