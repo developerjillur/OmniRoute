@@ -47,7 +47,7 @@ node scripts/check/check-tsc-ratchet.mjs --update   # 2965 → 3014 (upstream de
 node scripts/nexa-sync/gen-manifest.mjs
 git add -A && git commit && git push origin nexalance
 npm install && npm run build
-# NOTE: the current procedure (SKILL step 6) smokes the build OUT-OF-BAND on a
+# NOTE: the current procedure (SKILL "Deploy" step) smokes the build OUT-OF-BAND on a
 # throwaway port/data-dir FIRST, and only kickstarts live if that passes:
 #   PORT=28129 DATA_DIR=/tmp/omni-smoke node .build/next/standalone/dev/run-standalone.mjs
 launchctl kickstart -k "gui/$(id -u)/com.nexalance.omniroute-test"   # flip live, then re-smoke :28128
