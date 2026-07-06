@@ -131,3 +131,49 @@ test("bootstrapEnv ignores blank dataDirOverride values", () => {
     assert.equal(env.JWT_SECRET, "jwt-from-dot-env");
   });
 });
+
+// Security regression: server.env holds STORAGE_ENCRYPTION_KEY / JWT_SECRET /
+// API_KEY_SECRET (the crown-jewel secrets). It must never be world/group
+// readable — otherwise any local user can read the master key and defeat the
+// entire at-rest credential encryption.
+test(
+  "bootstrapEnv persists server.env with 0600 permissions",
+  { skip: process.platform === "win32" },
+  () => {
+    withTempEnv(({ dataDir }) => {
+      process.env.DATA_DIR = dataDir;
+      fs.mkdirSync(dataDir, { recursive: true });
+
+      // Fresh env → secrets are generated and persisted to server.env.
+      bootstrapEnv({ quiet: true });
+
+      const serverEnvPath = path.join(dataDir, "server.env");
+      assert.ok(fs.existsSync(serverEnvPath), "server.env should be written");
+      const mode = fs.statSync(serverEnvPath).mode & 0o777;
+      assert.equal(mode, 0o600, `server.env must be 0600 (owner-only), got 0${mode.toString(8)}`);
+    });
+  }
+);
+
+test(
+  "bootstrapEnv tightens permissions on a pre-existing loose server.env",
+  { skip: process.platform === "win32" },
+  () => {
+    withTempEnv(({ dataDir }) => {
+      process.env.DATA_DIR = dataDir;
+      fs.mkdirSync(dataDir, { recursive: true });
+
+      // Simulate a legacy world-readable file created before the fix.
+      const serverEnvPath = path.join(dataDir, "server.env");
+      fs.writeFileSync(serverEnvPath, "OMNIROUTE_BOOTSTRAPPED=true\n", { mode: 0o644 });
+      fs.chmodSync(serverEnvPath, 0o644);
+
+      // Force a rewrite by ensuring a secret needs (re)generating.
+      delete process.env.JWT_SECRET;
+      bootstrapEnv({ quiet: true });
+
+      const mode = fs.statSync(serverEnvPath).mode & 0o777;
+      assert.equal(mode, 0o600, `server.env must be tightened to 0600, got 0${mode.toString(8)}`);
+    });
+  }
+);

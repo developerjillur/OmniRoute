@@ -605,7 +605,15 @@ function startNextServer() {
         ...Object.entries(persisted).map(([k, v]) => `${k}=${v}`),
         "",
       ];
-      fs.writeFileSync(serverEnvPath, lines.join("\n"), "utf8");
+      // server.env holds STORAGE_ENCRYPTION_KEY / JWT_SECRET / API_KEY_SECRET —
+      // never world/group readable. `mode` covers creation; chmod tightens an
+      // existing looser file. POSIX mode is a no-op on Windows.
+      fs.writeFileSync(serverEnvPath, lines.join("\n"), { encoding: "utf8", mode: 0o600 });
+      try {
+        fs.chmodSync(serverEnvPath, 0o600);
+      } catch {
+        // Best-effort on platforms without POSIX permissions (e.g. Windows).
+      }
       console.log("[Electron] 📁 Secrets persisted to:", serverEnvPath);
     } catch (e) {
       console.warn("[Electron] Could not persist secrets:", e.message);

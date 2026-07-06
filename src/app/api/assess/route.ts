@@ -9,10 +9,11 @@ import {
   type ModelCategory,
 } from "@/domain/assessment/types";
 import { validateBody } from "@/shared/validation/helpers";
+import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/error.ts";
 
 const assessor = new Assessor(
-  process.env.OMNIROUTe_API_KEY ?? process.env.API_KEY ?? "",
-  process.env.OMNIROUTe_BASE_URL ?? "http://localhost:20128/v1"
+  process.env.OMNIROUTE_API_KEY ?? process.env.API_KEY ?? "",
+  process.env.OMNIROUTE_BASE_URL ?? "http://localhost:20128/v1"
 );
 
 const categorizer = new Categorizer();
@@ -95,10 +96,9 @@ export async function POST(request: NextRequest) {
       duration_ms: run.durationMs,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    );
+    // Hard Rule #12: never return a raw err.message/stack in a response body.
+    console.error("[API] POST /api/assess error:", error);
+    return NextResponse.json({ error: sanitizeErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -143,7 +143,7 @@ async function getAllModels(): Promise<Array<{ providerId: string; modelId: stri
   try {
     const resp = await fetch("http://localhost:20128/v1/models", {
       headers: {
-        Authorization: `Bearer ${process.env.OMNIROUTe_API_KEY ?? process.env.API_KEY ?? ""}`,
+        Authorization: `Bearer ${process.env.OMNIROUTE_API_KEY ?? process.env.API_KEY ?? ""}`,
       },
     });
     const data = (await resp.json()) as { data?: unknown };

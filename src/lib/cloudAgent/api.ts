@@ -1,18 +1,36 @@
 import { requireManagementAuth } from "@/lib/api/requireManagementAuth";
 import { getProviderConnections } from "@/lib/db/providers";
+import { resolveAllowedOrigin } from "@/server/cors/origins";
 import type { AgentCredentials } from "./baseAgent.ts";
 import type { CloudAgentTaskRow } from "./db.ts";
 
 type JsonRecord = Record<string, unknown>;
 
+/**
+ * CORS headers for the cloud-agent routes.
+ *
+ * These routes are cookie-authenticated via `requireManagementAuth`
+ * (`isDashboardSessionAuthenticated`), so they MUST stay fail-closed: an
+ * `Access-Control-Allow-Origin` may only ever be paired with
+ * `Access-Control-Allow-Credentials: true` for an origin that is explicitly on
+ * the central allowlist (`resolveAllowedOrigin`). Reflecting an arbitrary
+ * `Origin` back with credentials would let any site read a logged-in operator's
+ * responses cross-origin (credential theft / CSRF). Same-origin dashboard calls
+ * never trigger CORS, so this does not affect the normal UI. See
+ * `docs/security/CORS.md` and `src/server/cors/origins.ts`.
+ */
 export function getCloudAgentCorsHeaders(request?: Request) {
-  const origin = request?.headers.get("origin");
-  return {
-    "Access-Control-Allow-Origin": origin || "*",
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Credentials": "true",
+    Vary: "Origin",
   };
+  const allowedOrigin = resolveAllowedOrigin(request?.headers.get("origin"));
+  if (allowedOrigin) {
+    headers["Access-Control-Allow-Origin"] = allowedOrigin;
+    headers["Access-Control-Allow-Credentials"] = "true";
+  }
+  return headers;
 }
 
 export function withCloudAgentCors(response: Response, request?: Request): Response {
