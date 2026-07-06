@@ -3,10 +3,10 @@
   "upstreamBase": "3ddcee6369c5",
   "productionBranch": "nexalance",
   "counts": {
-    "total": 59,
-    "modifiedUpstream": 39,
+    "total": 60,
+    "modifiedUpstream": 40,
     "overlayNew": 20,
-    "upstreamCandidates": 48,
+    "upstreamCandidates": 49,
     "nexaSpecific": 11
   },
   "files": [
@@ -156,6 +156,12 @@
     },
     {
       "file": "public/openapi.yaml",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "scripts/build/assembleStandalone.mjs",
       "class": "upstream-candidate",
       "kind": "modified-upstream",
       "conflictRisk": "on-overlap"

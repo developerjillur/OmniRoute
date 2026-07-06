@@ -29,7 +29,11 @@ const KEEP = ARGS.has("--keep");
 const SKIP_VALIDATE = ARGS.has("--no-validate");
 
 const git = (args, opts = {}) =>
-  execFileSync("git", args, { cwd: opts.cwd || ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  execFileSync("git", args, {
+    cwd: opts.cwd || ROOT,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  }).trim();
 const gitOk = (args, opts = {}) => {
   const r = spawnSync("git", args, { cwd: opts.cwd || ROOT, encoding: "utf8" });
   return { ok: r.status === 0, out: (r.stdout || "") + (r.stderr || ""), code: r.status };
@@ -45,7 +49,8 @@ function shortSha(ref) {
 }
 
 function main() {
-  const { upstreamRemote, upstreamBranch, productionBranch, sandboxWorktreeDir, syncBranchPrefix } = CFG;
+  const { upstreamRemote, upstreamBranch, productionBranch, sandboxWorktreeDir, syncBranchPrefix } =
+    CFG;
   const upstreamRef = `${upstreamRemote}/${upstreamBranch}`;
 
   log(`[nexa-sync] fetching ${upstreamRef} …`);
@@ -60,11 +65,20 @@ function main() {
   // How many upstream commits are NOT yet in our production branch?
   const behind = Number(git(["rev-list", "--count", `${productionBranch}..${upstreamRef}`]) || "0");
 
-  log(`[nexa-sync] production '${productionBranch}'=${prodSha}  upstream ${upstreamRef}=${upstreamSha}  (behind ${behind})`);
+  log(
+    `[nexa-sync] production '${productionBranch}'=${prodSha}  upstream ${upstreamRef}=${upstreamSha}  (behind ${behind})`
+  );
 
   if (behind === 0) {
     log("[nexa-sync] ✓ up to date with upstream — nothing to sync.");
-    writeState({ status: "up-to-date", upstreamSha, prodSha, behind, conflicts: [], validated: null });
+    writeState({
+      status: "up-to-date",
+      upstreamSha,
+      prodSha,
+      behind,
+      conflicts: [],
+      validated: null,
+    });
     process.exit(0);
   }
   if (CHECK_ONLY) {
@@ -97,7 +111,9 @@ function main() {
       gitOk(["merge", "--abort"], { cwd: wt });
       writeReport({ upstreamSha, prodSha, behind, conflicts, validated: null, merged: false });
       writeState({ status: "conflicts", upstreamSha, prodSha, behind, conflicts, validated: null });
-      log(`[nexa-sync] ✗ conflicts — a human/PR is needed. Report: .nexa/reports/sync-${upstreamSha}.md`);
+      log(
+        `[nexa-sync] ✗ conflicts — a human/PR is needed. Report: .nexa/reports/sync-${upstreamSha}.md`
+      );
       exitCode = 20;
       return;
     }
@@ -116,19 +132,36 @@ function main() {
 
     const allGreen = validated == null || validated.every((v) => v.ok);
     writeReport({ upstreamSha, prodSha, behind, conflicts: [], validated, merged: true });
-    writeState({ status: allGreen ? "clean-validated" : "validation-failed", upstreamSha, prodSha, behind, conflicts: [], validated });
+    writeState({
+      status: allGreen ? "clean-validated" : "validation-failed",
+      upstreamSha,
+      prodSha,
+      behind,
+      conflicts: [],
+      validated,
+    });
 
     if (allGreen) {
-      log(`[nexa-sync] ✅ clean merge + validation green. Sandbox branch '${syncBranch}' is ready to fast-forward '${productionBranch}'.`);
-      log(`[nexa-sync]    To land it:  git checkout ${productionBranch} && git merge --ff-only ${syncBranch}`);
+      log(
+        `[nexa-sync] ✅ clean merge + validation green. Sandbox branch '${syncBranch}' is ready to fast-forward '${productionBranch}'.`
+      );
+      log(
+        `[nexa-sync]    To land it:  git checkout ${productionBranch} && git merge --ff-only ${syncBranch}`
+      );
       exitCode = 0;
     } else {
-      log(`[nexa-sync] ✗ merge clean but VALIDATION FAILED. Report: .nexa/reports/sync-${upstreamSha}.md`);
+      log(
+        `[nexa-sync] ✗ merge clean but VALIDATION FAILED. Report: .nexa/reports/sync-${upstreamSha}.md`
+      );
       exitCode = 30;
     }
   } finally {
-    if (!KEEP && exitCode !== 30) cleanupWorktree(wt, syncBranch);
-    else if (KEEP || exitCode === 30) log(`[nexa-sync] sandbox kept at ${sandboxWorktreeDir} (branch ${syncBranch}) for inspection.`);
+    // Keep the sandbox worktree + sync BRANCH on a clean-validated (0) or
+    // validation-failed (30) result, so `git merge --ff-only <syncBranch>` can
+    // land the validated tree / you can inspect a failure. Only tear down an
+    // aborted-conflict (20) sandbox (there's nothing to keep), unless --keep.
+    if (exitCode === 20 && !KEEP) cleanupWorktree(wt, syncBranch);
+    else log(`[nexa-sync] sandbox + branch '${syncBranch}' kept at ${sandboxWorktreeDir}.`);
     process.exit(exitCode);
   }
 }
@@ -148,7 +181,11 @@ function runValidation(wt) {
     log(`[nexa-sync] validate → ${step.name}`);
     const r = spawnSync("bash", ["-lc", step.cmd], { cwd: wt, encoding: "utf8" });
     const ok = r.status === 0;
-    results.push({ name: step.name, ok, tail: ((r.stdout || "") + (r.stderr || "")).split("\n").slice(-8).join("\n") });
+    results.push({
+      name: step.name,
+      ok,
+      tail: ((r.stdout || "") + (r.stderr || "")).split("\n").slice(-8).join("\n"),
+    });
     log(`[nexa-sync]   ${ok ? "✓" : "✗"} ${step.name}`);
   }
   return results;
@@ -162,7 +199,10 @@ function cleanupWorktree(wt, branch) {
 
 function writeState(s) {
   const dir = path.join(ROOT, ".nexa");
-  fs.writeFileSync(path.join(dir, "last-sync.json"), JSON.stringify({ ...s, at: new Date().toISOString() }, null, 2) + "\n");
+  fs.writeFileSync(
+    path.join(dir, "last-sync.json"),
+    JSON.stringify({ ...s, at: new Date().toISOString() }, null, 2) + "\n"
+  );
 }
 
 function writeReport({ upstreamSha, prodSha, behind, conflicts, validated, merged }) {
@@ -177,12 +217,23 @@ function writeReport({ upstreamSha, prodSha, behind, conflicts, validated, merge
     ``,
   ];
   if (conflicts.length) {
-    lines.push(`## Conflicted files (need resolution)`, ``, ...conflicts.map((f) => `- \`${f}\``), ``);
-    lines.push(`These are files BOTH we and upstream changed. Each carries a \`// NEXA\`/\`// SECURITY_AUDIT\`/\`// QA\` tag — keep BOTH our tagged change and upstream's.`, ``);
+    lines.push(
+      `## Conflicted files (need resolution)`,
+      ``,
+      ...conflicts.map((f) => `- \`${f}\``),
+      ``
+    );
+    lines.push(
+      `These are files BOTH we and upstream changed. Each carries a \`// NEXA\`/\`// SECURITY_AUDIT\`/\`// QA\` tag — keep BOTH our tagged change and upstream's.`,
+      ``
+    );
   }
   if (validated) {
     lines.push(`## Validation (our customization gate)`, ``);
-    for (const v of validated) lines.push(`- ${v.ok ? "✅" : "❌"} **${v.name}**${v.ok ? "" : `\n\n  \`\`\`\n${v.tail}\n\`\`\``}`);
+    for (const v of validated)
+      lines.push(
+        `- ${v.ok ? "✅" : "❌"} **${v.name}**${v.ok ? "" : `\n\n  \`\`\`\n${v.tail}\n\`\`\``}`
+      );
     lines.push(``);
   }
   fs.writeFileSync(path.join(dir, `sync-${upstreamSha}.md`), lines.join("\n"));

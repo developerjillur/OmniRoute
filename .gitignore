@@ -238,3 +238,12 @@ mise.toml
 .nexa/reports/
 .nexa/last-sync.json
 _artifacts/
+
+# NEXA living-fork: track the sync skill + agent so they travel with the fork
+# (Claude Code auto-discovers them). Everything else in .claude/ stays local.
+!.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
+!.claude/agents/
+!.claude/agents/**
