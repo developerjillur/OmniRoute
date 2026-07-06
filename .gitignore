@@ -237,3 +237,4 @@ mise.toml
 .nexa/.sandbox/
 .nexa/reports/
 .nexa/last-sync.json
+_artifacts/

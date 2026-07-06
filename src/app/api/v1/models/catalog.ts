@@ -315,9 +315,13 @@ async function buildUnifiedModelsResponse(
         registryContext ??
         specContext ??
         (getTokenLimit(providerId, modelId) || undefined);
-      const maxInputTokens = isPositiveFiniteNumber(synced?.limit_input)
+      const registryInputLimit = isPositiveFiniteNumber(registryModel?.maxInputTokens)
+        ? registryModel.maxInputTokens
+        : undefined;
+      const syncedInputLimit = isPositiveFiniteNumber(synced?.limit_input)
         ? synced.limit_input
-        : contextLength;
+        : undefined;
+      const maxInputTokens = registryInputLimit ?? syncedInputLimit ?? contextLength;
       const maxOutputTokens = isPositiveFiniteNumber(synced?.limit_output)
         ? synced.limit_output
         : isPositiveFiniteNumber(spec?.maxOutputTokens)

@@ -54,6 +54,8 @@ export type EarlyStreamKeepaliveOptions = {
    * for their stream watchdog and only a real `event: ping` keeps them from aborting.
    */
   keepaliveFrame?: Uint8Array;
+  /** Extra headers to include in the keepalive response (e.g. X-Correlation-Id). */
+  extraHeaders?: Record<string, string>;
 };
 
 type SettledHandler = { ok: true; response: Response } | { ok: false; error: unknown };
@@ -66,6 +68,7 @@ export async function withEarlyStreamKeepalive(
   const intervalMs = Math.max(250, options.intervalMs ?? 2_500);
   const signal = options.signal ?? null;
   const keepaliveFrame = options.keepaliveFrame ?? KEEPALIVE_FRAME;
+  const extraHeaders = options.extraHeaders ?? {};
 
   // Settle into a tagged result so neither race branch leaves an unhandled
   // rejection when the threshold timer wins.
@@ -154,10 +157,25 @@ export async function withEarlyStreamKeepalive(
           if (response.body && isSse) {
             // Real SSE stream — forward it verbatim.
             upstreamReader = response.body.getReader();
-            while (true) {
-              const { done, value } = await upstreamReader.read();
-              if (done) break;
-              if (value) controller.enqueue(value);
+            let bytesForwarded = 0;
+            try {
+              while (true) {
+                const { done, value } = await upstreamReader.read();
+                if (done) break;
+                if (value) {
+                  controller.enqueue(value);
+                  bytesForwarded += value.byteLength;
+                }
+              }
+            } catch (readErr) {
+              // Upstream stream failed mid-flight. Only emit an error frame if
+              // NO content was forwarded yet — otherwise the client already
+              // received partial content and a late error frame would corrupt
+              // the SSE stream. Silently close instead; the client will see
+              // the stream end naturally.
+              if (bytesForwarded === 0) {
+                controller.enqueue(ERROR_FRAME);
+              }
             }
           } else {
             // Non-SSE response (e.g. a JSON error) reached us after we already
@@ -210,6 +228,11 @@ export async function withEarlyStreamKeepalive(
   keepaliveHeaders.delete("content-length");
   keepaliveHeaders.delete("content-encoding");
   keepaliveHeaders.delete("transfer-encoding");
+  // MERGE (v3.8.45): apply upstream's `extraHeaders` option ON TOP of our
+  // preserved source headers. keepaliveHeaders already carries the source
+  // response's x-omniroute-* metadata (our streaming-telemetry fix) — upstream's
+  // fresh-headers approach would have dropped it. Both behaviours retained.
+  for (const [key, value] of Object.entries(extraHeaders)) keepaliveHeaders.set(key, value);
   return new Response(stream, {
     status: 200,
     headers: keepaliveHeaders,
