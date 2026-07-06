@@ -232,3 +232,8 @@ omniroute.md
 
 # mise configuration
 mise.toml
+
+# NexaLance upstream-sync (ephemeral)
+.nexa/.sandbox/
+.nexa/reports/
+.nexa/last-sync.json

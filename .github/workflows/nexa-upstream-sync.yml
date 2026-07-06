@@ -1,0 +1,83 @@
+# NexaLance living-fork — automated upstream sync.
+# Runs the nexa-sync orchestrator on a schedule: merges diegosouzapw/OmniRoute
+# into an isolated sandbox, validates against our customization regression tests,
+# and EITHER opens a ready-to-review PR (conflicts / validation failures) OR a
+# green auto-mergeable PR (clean + validated). Never force-pushes; never touches
+# upstream. Enable once the fork exists (Settings → Actions → enable).
+name: nexa-upstream-sync
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # daily 06:17 UTC — catch new upstream releases
+  workflow_dispatch: {} # manual "sync now" button
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: nexa-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout our fork (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: nexalance # our production branch
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/diegosouzapw/OmniRoute.git || true
+          git fetch upstream main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps (for validation)
+        run: npm ci --no-audit --no-fund
+
+      - name: Run upstream sync (sandbox merge + validate)
+        id: sync
+        run: |
+          set +e
+          node scripts/nexa-sync/nexa-sync.mjs --keep
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Publish report to job summary
+        if: always()
+        run: |
+          REPORT=$(ls -t .nexa/reports/*.md 2>/dev/null | head -1)
+          if [ -n "$REPORT" ]; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
+
+      # Clean + validated → push the sandbox branch and open an auto-mergeable PR.
+      - name: Open PR (clean + validated)
+        if: steps.sync.outputs.code == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          UP=$(git rev-parse --short upstream/main)
+          BR="nexa/sync-$UP"
+          git push -f origin "$BR" || true
+          gh pr create --base nexalance --head "$BR" \
+            --title "Upstream sync $UP (clean + validated ✅)" \
+            --body "Automated: clean merge of diegosouzapw/OmniRoute@$UP, all customization regression tests green. Safe to merge." || true
+
+      # Conflicts (20) or validation failure (30) → open an issue for a human.
+      - name: Open issue (needs human resolution)
+        if: steps.sync.outputs.code == '20' || steps.sync.outputs.code == '30'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          UP=$(git rev-parse --short upstream/main)
+          REPORT=$(ls -t .nexa/reports/*.md 2>/dev/null | head -1)
+          gh issue create \
+            --title "Upstream sync $UP needs resolution (exit ${{ steps.sync.outputs.code }})" \
+            --body-file "${REPORT:-/dev/null}" || true

@@ -1,0 +1,314 @@
+{
+  "_comment": "NexaLance fork customization registry. 'upstream-candidate' files are generic fixes worth PRing to diegosouzapw/OmniRoute (shrinks the fork); 'nexa-specific' stay forever. 'overlay-new' files have ZERO merge-conflict risk.",
+  "upstreamBase": "1bda6c15dc88",
+  "productionBranch": "nexalance",
+  "counts": {
+    "total": 50,
+    "modifiedUpstream": 37,
+    "overlayNew": 13,
+    "upstreamCandidates": 46,
+    "nexaSpecific": 4
+  },
+  "files": [
+    {
+      "file": "bin/cli/api.mjs",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "bin/cli/commands/doctor.mjs",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "bin/cli/commands/health.mjs",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "bin/omniroute.mjs",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "config/quality/tsc-error-baseline.json",
+      "class": "nexa-specific",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "docker-compose.nexaconnect.yml",
+      "class": "nexa-specific",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "docs/openapi.yaml",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "electron/loginManager.js",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "electron/main.js",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "next.config.mjs",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "open-sse/executors/antigravity.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "open-sse/services/__tests__/antigravity-quota-family.test.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "open-sse/services/antigravityProjectBootstrap.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "open-sse/services/antigravityQuotaFamily.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "open-sse/services/combo.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "open-sse/services/errorClassifier.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "open-sse/utils/earlyStreamKeepalive.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "open-sse/utils/error.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "package.json",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "public/openapi.yaml",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "scripts/build/bootstrap-env.mjs",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "scripts/build/startupGuard.mjs",
+      "class": "nexa-specific",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "scripts/check/check-tsc-ratchet.mjs",
+      "class": "nexa-specific",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "scripts/dev/run-standalone.mjs",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "scripts/docs/annotate-loopback-only.mjs",
+      "class": "upstream-candidate",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "src/app/.well-known/agent.json/route.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/app/(dashboard)/dashboard/providers/[id]/components/ProviderModalsPanel.tsx",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/app/(dashboard)/dashboard/tools/page.tsx",
+      "class": "upstream-candidate",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "src/app/api/db/health/route.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/app/api/logs/route.ts",
+      "class": "upstream-candidate",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "src/app/api/monitoring/health/route.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/app/api/playground/presets/route.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/app/api/v1/models/catalog.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/app/api/v1/models/catalogCache.ts",
+      "class": "upstream-candidate",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "src/app/docs/lib/openapi.generated.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/lib/cloudAgent/api.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/lib/cloudSync.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/lib/db/upstreamProxy.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/lib/guardrails/registry.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/lib/providers/validation/headers.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/mitm/inspector/agentBridgeHook.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/mitm/sanitizeHeaders.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/server/authz/routeGuard.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "src/shared/network/safeOutboundFetch.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "tests/e2e/providers-management.spec.ts",
+      "class": "upstream-candidate",
+      "kind": "modified-upstream",
+      "conflictRisk": "on-overlap"
+    },
+    {
+      "file": "tests/unit/authz/__stub_apiKeys.mjs",
+      "class": "upstream-candidate",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "tests/unit/combo-diagnostics-trace.test.ts",
+      "class": "upstream-candidate",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "tests/unit/provider-validation-ssrf-guard.test.ts",
+      "class": "upstream-candidate",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "tests/unit/security/audit-remediation-guards.test.ts",
+      "class": "upstream-candidate",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    },
+    {
+      "file": "tests/unit/security/audit-remediation.test.ts",
+      "class": "upstream-candidate",
+      "kind": "overlay-new",
+      "conflictRisk": "none"
+    }
+  ]
+}
