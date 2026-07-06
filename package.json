@@ -170,6 +170,7 @@
     "check:tsc-ratchet": "node scripts/check/check-tsc-ratchet.mjs",
     "nexa:sync": "node scripts/nexa-sync/nexa-sync.mjs",
     "nexa:sync:check": "node scripts/nexa-sync/nexa-sync.mjs --check",
+    "nexa:status": "node scripts/nexa-sync/nexa-status.mjs",
     "check:codeql-ratchet": "node scripts/check/check-codeql-ratchet.mjs",
     "check:secrets": "node scripts/check/check-secrets.mjs",
     "check:workflows": "node scripts/check/check-workflows.mjs",
