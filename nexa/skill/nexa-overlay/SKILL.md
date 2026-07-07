@@ -108,7 +108,12 @@ node nexa/build.mjs            # apply → npm run build → auto-restore; outpu
 (cd .build/next/standalone && PORT=28129 DATA_DIR=/tmp/omni-smoke node dev/run-standalone.mjs)
 #   check /api/monitoring/health, a cx/gpt-5.5 completion, x-omniroute-* streaming/catalog headers, CORS fail-closed
 kill $(lsof -ti tcp:28129)     # kill by PORT, not PID
-# only if the throwaway passes, flip live:
+# CAVEAT: a 2nd instance binds FIXED aux ports 20129 (LiveWS) + 20131 (EmbedWsProxy) that PORT does NOT
+#   remap, so while live :28128 is up the throwaway EADDRINUSE-crashes. Either stop live first, or (what
+#   the 2026-07-07 deploy did) skip out-of-band and validate by kickstarting live directly with rollback
+#   armed, then verify :28128 health + a real completion. The build is byte-identical source to live, so
+#   `nexa/build.mjs` succeeding + a clean :28128 boot is sufficient proof.
+# only if the throwaway passes (or per the caveat above), flip live:
 launchctl kickstart -k gui/$(id -u)/com.nexalance.omniroute-test    # → re-smoke :28128, watch /tmp/omniroute-28128.log ~10 min
 ```
 
