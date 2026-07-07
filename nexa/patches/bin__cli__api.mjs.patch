@@ -1,0 +1,15 @@
+diff --git a/bin/cli/api.mjs b/bin/cli/api.mjs
+index 52e4bba..870e898 100644
+--- a/bin/cli/api.mjs
++++ b/bin/cli/api.mjs
+@@ -256,7 +256,9 @@ function normalizeNetworkError(err) {
+ 
+ export async function isServerUp(opts = {}) {
+   try {
+-    const res = await apiFetch("/api/health", {
++    // Use the real liveness endpoint. /api/health has no root route (404); the
++    // correct probes are /api/health/ping (liveness) + /api/monitoring/health.
++    const res = await apiFetch("/api/health/ping", {
+       ...opts,
+       retry: false,
+       timeout: opts.timeout ?? 1500,

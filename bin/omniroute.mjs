@@ -85,19 +85,8 @@ function loadEnvFile() {
     }
   }
 
-  // Route the env-provisioning notice to STDERR in machine-output mode so it does
-  // not corrupt JSON/JSONL/CSV stdout parsing (QA finding: "CLI machine output").
-  const argv = process.argv.slice(2);
-  const machineOutput =
-    !process.stdout.isTTY ||
-    argv.includes("--json") ||
-    argv.includes("--quiet") ||
-    argv.some((a) => /^--output=(json|jsonl|csv)$/.test(a)) ||
-    argv.some((a, i) => a === "--output" && ["json", "jsonl", "csv"].includes(argv[i + 1]));
   for (const envPath of loadedEnvPaths) {
-    const line = `  \x1b[2m📋 Loaded env from ${envPath}\x1b[0m`;
-    if (machineOutput) process.stderr.write(line + "\n");
-    else console.log(line);
+    console.log(`  \x1b[2m📋 Loaded env from ${envPath}\x1b[0m`);
   }
 }
 

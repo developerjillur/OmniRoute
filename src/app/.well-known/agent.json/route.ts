@@ -11,26 +11,7 @@
 import { NextResponse } from "next/server";
 
 const PACKAGE_VERSION = process.env.npm_package_version || "1.8.1";
-
-/**
- * Resolve the public base URL for the A2A card: explicit env first, else the
- * real request host (so the card advertises the actual serving origin instead
- * of a hardcoded dev port). Falls back to :28128 only when there is no host
- * header. Fixes the stale `:20128` default. (a2a-card-url)
- */
-function resolveAgentBaseUrl(request: Request): string {
-  const envUrl =
-    process.env.OMNIROUTE_BASE_URL || process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL;
-  if (envUrl) return envUrl.replace(/\/+$/, "");
-  const host = request.headers.get("host");
-  if (host) {
-    const proto =
-      request.headers.get("x-forwarded-proto") ||
-      (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
-    return `${proto}://${host}`;
-  }
-  return "http://localhost:28128";
-}
+const BASE_URL = process.env.OMNIROUTE_BASE_URL || "http://localhost:20128";
 
 /**
  * GET /.well-known/agent.json
@@ -38,8 +19,7 @@ function resolveAgentBaseUrl(request: Request): string {
  * Returns the OmniRoute Agent Card that describes this gateway's
  * capabilities as an A2A agent.
  */
-export async function GET(request: Request) {
-  const baseUrl = resolveAgentBaseUrl(request);
+export async function GET() {
   const agentCard = {
     name: "OmniRoute AI Gateway",
     description:
@@ -47,7 +27,7 @@ export async function GET(request: Request) {
       "quota tracking, format translation, and auto-managed combos. " +
       "Routes AI requests to the optimal provider based on cost, latency, " +
       "quota availability, and task requirements.",
-    url: `${baseUrl}/a2a`,
+    url: `${BASE_URL}/a2a`,
     version: PACKAGE_VERSION,
     capabilities: {
       streaming: true,

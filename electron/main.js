@@ -359,10 +359,6 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      // Enable Chromium's renderer sandbox. preload.js is sandbox-safe: it only
-      // require()s "electron" (contextBridge/ipcRenderer) + uses process.platform
-      // and DOM APIs — no Node core modules — so no preload refactor is needed.
-      sandbox: true,
       webSecurity: true,
       webviewTag: false,
     },
@@ -609,15 +605,7 @@ function startNextServer() {
         ...Object.entries(persisted).map(([k, v]) => `${k}=${v}`),
         "",
       ];
-      // SECURITY_AUDIT M2: server.env holds master secrets (STORAGE_ENCRYPTION_KEY,
-      // JWT_SECRET, API_KEY_SECRET) — create it 0600 and chmod to tighten any
-      // pre-existing 0644 file, so no other local user can read the master key.
-      fs.writeFileSync(serverEnvPath, lines.join("\n"), { encoding: "utf8", mode: 0o600 });
-      try {
-        fs.chmodSync(serverEnvPath, 0o600);
-      } catch {
-        /* non-POSIX FS or perms — create-mode already applied */
-      }
+      fs.writeFileSync(serverEnvPath, lines.join("\n"), "utf8");
       console.log("[Electron] 📁 Secrets persisted to:", serverEnvPath);
     } catch (e) {
       console.warn("[Electron] Could not persist secrets:", e.message);

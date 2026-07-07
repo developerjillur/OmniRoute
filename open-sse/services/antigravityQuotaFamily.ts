@@ -1,11 +1,6 @@
 const ANTIGRAVITY_PROVIDER_ID = "antigravity";
 
-export type AntigravityQuotaFamily =
-  | "gemini-flash"
-  | "gemini-pro"
-  | "gemini"
-  | "claude"
-  | "other";
+export type AntigravityQuotaFamily = "gemini" | "claude" | "other";
 
 function normalizeModelId(model: string | null | undefined): string {
   return String(model || "")
@@ -28,11 +23,6 @@ export function getAntigravityQuotaFamily(
   const bare = slashIndex >= 0 ? normalized.slice(slashIndex + 1) : normalized;
 
   if (bare.startsWith("gemini-") || bare.includes("/gemini-") || bare.includes("gemini")) {
-    // Google enforces SEPARATE quota buckets per tier (Flash vs Pro). Keeping them
-    // independent means exhausting the small Pro quota (e.g. gemini-2.5-pro 429s)
-    // does NOT lock out the Flash models, which have their own quota. (#antigravity-quota-tier)
-    if (bare.includes("flash")) return "gemini-flash";
-    if (bare.includes("pro")) return "gemini-pro";
     return "gemini";
   }
   if (

@@ -48,11 +48,7 @@ export async function runHealthCommand(opts = {}) {
   }
 
   try {
-    const res = await apiFetch("/api/monitoring/health", {
-      retry: false,
-      timeout: 5000,
-      acceptNotOk: true,
-    });
+    const res = await apiFetch("/api/health", { retry: false, timeout: 5000, acceptNotOk: true });
     if (!res.ok) {
       console.error(t("common.error", { message: `HTTP ${res.status}` }));
       return 1;
@@ -104,11 +100,7 @@ export async function runHealthCommand(opts = {}) {
 
 export async function runHealthComponentsCommand(opts = {}) {
   try {
-    const res = await apiFetch("/api/monitoring/health", {
-      retry: false,
-      timeout: 5000,
-      acceptNotOk: true,
-    });
+    const res = await apiFetch("/api/health", { retry: false, timeout: 5000, acceptNotOk: true });
     if (!res.ok) {
       console.error(`HTTP ${res.status}`);
       return 1;

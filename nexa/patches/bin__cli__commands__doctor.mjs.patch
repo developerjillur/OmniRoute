@@ -1,0 +1,25 @@
+diff --git a/bin/cli/commands/doctor.mjs b/bin/cli/commands/doctor.mjs
+index 087101b..fad7552 100644
+--- a/bin/cli/commands/doctor.mjs
++++ b/bin/cli/commands/doctor.mjs
+@@ -312,7 +312,19 @@ async function checkNativeBinary(rootDir) {
+     );
+     const compatible = isNativeBinaryCompatible(binaryPath);
+     if (!compatible) {
+-      return fail("Native binary", "better-sqlite3 native binary is incompatible", { binaryPath });
++      // Actionable remediation: this is almost always a Node ABI mismatch — the
++      // CLI is running under a different Node major than the one better-sqlite3
++      // was built for (e.g. shell Node 24 vs the server's bundled Node 22).
++      const remediation =
++        `built for a different Node ABI than this runtime (${process.version}, ABI ` +
++        `${process.versions.modules}). Fix: run the CLI with the same Node the server was ` +
++        `built with, or rebuild the module (\`npm rebuild better-sqlite3\` in a source install), ` +
++        `or use the bundled/packaged runtime (Docker image / packaged binary).`;
++      return fail("Native binary", `better-sqlite3 native binary is incompatible — ${remediation}`, {
++        binaryPath,
++        nodeVersion: process.version,
++        nodeAbi: process.versions.modules,
++      });
+     }
+     return ok("Native binary", "better-sqlite3 native binary is compatible", { binaryPath });
+   } catch {

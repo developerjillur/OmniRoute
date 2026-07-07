@@ -1,0 +1,17 @@
+diff --git a/electron/loginManager.js b/electron/loginManager.js
+index 0e0bb2d..4eda2ec 100644
+--- a/electron/loginManager.js
++++ b/electron/loginManager.js
+@@ -117,6 +117,12 @@ class LoginManager extends EventEmitter {
+       webPreferences: {
+         contextIsolation: true,
+         nodeIntegration: false,
++        // The login window renders an untrusted third-party provider page, so
++        // sandbox it. There is no preload here, and main-process navigation/
++        // cookie tracking via webContents.session is unaffected by the renderer
++        // sandbox.
++        sandbox: true,
++        webSecurity: true,
+         session: session.fromPartition(`login-${providerId}-${Date.now()}`),
+       },
+       show: true,

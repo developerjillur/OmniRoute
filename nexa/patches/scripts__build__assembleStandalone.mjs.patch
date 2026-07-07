@@ -1,0 +1,18 @@
+diff --git a/scripts/build/assembleStandalone.mjs b/scripts/build/assembleStandalone.mjs
+index 6ee88d5..5143434 100644
+--- a/scripts/build/assembleStandalone.mjs
++++ b/scripts/build/assembleStandalone.mjs
+@@ -165,6 +165,13 @@ const EXTRA_MODULE_ENTRIES = [
+     src: ["scripts", "build", "bootstrap-env.mjs"],
+     dest: ["build", "bootstrap-env.mjs"],
+   },
++  {
++    // NEXA: run-standalone.mjs imports ../build/startupGuard.mjs (the public-bind
++    // safety guard); it MUST be synced to build/ or the standalone crashes on boot.
++    label: "startupGuard script",
++    src: ["scripts", "build", "startupGuard.mjs"],
++    dest: ["build", "startupGuard.mjs"],
++  },
+   {
+     label: "healthcheck script",
+     src: ["scripts", "dev", "healthcheck.mjs"],

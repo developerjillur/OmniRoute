@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OmniRoute API
-  version: 3.8.44
+  version: 3.8.35
   description: |
     OmniRoute is a local-first AI API proxy router. It provides an OpenAI-compatible
     endpoint that routes requests to multiple AI providers with load balancing,
@@ -2818,7 +2818,6 @@ paths:
 
   /api/cli-tools/runtime/{toolId}:
     get:
-      x-loopback-only: true
       tags: [CLI Tools]
       summary: Get runtime status for a CLI tool
       parameters:
@@ -3091,7 +3090,6 @@ paths:
 
   /api/services/9router/install:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Install 9Router from npm
       description: >-
@@ -3130,7 +3128,6 @@ paths:
 
   /api/services/9router/start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Start 9Router
       description: >-
@@ -3150,7 +3147,6 @@ paths:
 
   /api/services/9router/stop:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Stop 9Router
       description: >-
@@ -3168,7 +3164,6 @@ paths:
 
   /api/services/9router/restart:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Restart 9Router
       description: >-
@@ -3184,7 +3179,6 @@ paths:
 
   /api/services/9router/update:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Update 9Router to a newer npm version
       description: >-
@@ -3221,7 +3215,6 @@ paths:
 
   /api/services/9router/rotate-key:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Rotate the 9Router API key
       description: >-
@@ -3245,7 +3238,6 @@ paths:
 
   /api/services/9router/status:
     get:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Get 9Router status
       description: >-
@@ -3263,7 +3255,6 @@ paths:
 
   /api/services/9router/auto-start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Toggle 9Router auto-start
       description: >-
@@ -3294,7 +3285,6 @@ paths:
 
   /api/services/cliproxy/install:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Install CLIProxyAPI from npm
       description: >-
@@ -3329,7 +3319,6 @@ paths:
 
   /api/services/cliproxy/start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Start CLIProxyAPI
       description: >-
@@ -3349,7 +3338,6 @@ paths:
 
   /api/services/cliproxy/stop:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Stop CLIProxyAPI
       description: >-
@@ -3365,7 +3353,6 @@ paths:
 
   /api/services/cliproxy/restart:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Restart CLIProxyAPI
       description: >-
@@ -3381,7 +3368,6 @@ paths:
 
   /api/services/cliproxy/update:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Update CLIProxyAPI to a newer npm version
       description: >-
@@ -3414,7 +3400,6 @@ paths:
 
   /api/services/cliproxy/status:
     get:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Get CLIProxyAPI status
       description: >-
@@ -3431,7 +3416,6 @@ paths:
 
   /api/services/cliproxy/auto-start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Toggle CLIProxyAPI auto-start
       description: >-
@@ -3460,293 +3444,8 @@ paths:
         "400":
           description: Invalid request body
 
-  /api/services/mux/install:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Install Mux from npm
-      description: >-
-        Installs the `mux` npm package (coder/mux — local agent-orchestration
-        daemon) under DATA_DIR/services/mux/. **LOCAL_ONLY** — loopback only.
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                version:
-                  type: string
-                  default: latest
-      responses:
-        "200":
-          description: Install succeeded
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  installedVersion:
-                    type: string
-        "400":
-          description: Invalid request body
-        "500":
-          description: npm install failed
-
-  /api/services/mux/start:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Start Mux
-      description: >-
-        Spawns `mux server --host 127.0.0.1 --port <port>`. Idempotent if
-        already running. **LOCAL_ONLY** — loopback only.
-      responses:
-        "200":
-          description: Service started
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ServiceStatus"
-        "409":
-          description: Mux is not installed
-        "503":
-          description: Start failed
-
-  /api/services/mux/stop:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Stop Mux
-      description: >-
-        Gracefully stops Mux. Idempotent.
-        **LOCAL_ONLY** — loopback only.
-      responses:
-        "200":
-          description: Service stopped
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ServiceStatus"
-
-  /api/services/mux/restart:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Restart Mux
-      description: >-
-        stop() then start() under the operation lock.
-        **LOCAL_ONLY** — loopback only.
-      responses:
-        "200":
-          description: Service restarted
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ServiceStatus"
-
-  /api/services/mux/update:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Update Mux to a newer npm version
-      description: >-
-        Stops, installs newer version, restarts.
-        **LOCAL_ONLY** — loopback only.
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                version:
-                  type: string
-                  default: latest
-      responses:
-        "200":
-          description: Update succeeded
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  installedVersion:
-                    type: string
-        "500":
-          description: Update failed
-
-  /api/services/mux/status:
-    get:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Get Mux status
-      description: >-
-        Returns live supervisor state and DB metadata.
-        **LOCAL_ONLY** — loopback only.
-      responses:
-        "200":
-          description: Status response
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ServiceStatus"
-
-  /api/services/mux/auto-start:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Toggle Mux auto-start
-      description: >-
-        When enabled, Mux starts automatically on the next OmniRoute boot.
-        **LOCAL_ONLY** — loopback only.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [enabled]
-              properties:
-                enabled:
-                  type: boolean
-      responses:
-        "200":
-          description: Auto-start flag updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  autoStart:
-                    type: boolean
-        "400":
-          description: Invalid request body
-
-  /api/services/bifrost/install:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Install Bifrost
-      description: >-
-        Installs the `@maximhq/bifrost` npm package under DATA_DIR/services/bifrost/.
-        The package downloads the Go binary on first run. Accepts an optional `version`
-        field (semver or `latest`). **LOCAL_ONLY** — loopback only.
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                version:
-                  type: string
-                  default: latest
-      responses:
-        "200":
-          description: Installation result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  installedVersion:
-                    type: string
-                  installPath:
-                    type: string
-                  durationMs:
-                    type: number
-
-  /api/services/bifrost/start:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Start Bifrost
-      description: Starts the supervised Bifrost process. **LOCAL_ONLY** — loopback only.
-      responses:
-        "200":
-          description: Service status after start
-        "409":
-          description: Bifrost is not installed
-
-  /api/services/bifrost/stop:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Stop Bifrost
-      description: Stops the supervised Bifrost process. **LOCAL_ONLY** — loopback only.
-      responses:
-        "200":
-          description: Service status after stop
-
-  /api/services/bifrost/restart:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Restart Bifrost
-      description: Restarts the supervised Bifrost process. **LOCAL_ONLY** — loopback only.
-      responses:
-        "200":
-          description: Service status after restart
-        "409":
-          description: Bifrost is not installed
-
-  /api/services/bifrost/update:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Update Bifrost
-      description: >-
-        Updates Bifrost to the latest npm version. Stops the running process,
-        installs the new version, and restarts if it was previously running.
-        **LOCAL_ONLY** — loopback only.
-      responses:
-        "200":
-          description: Update result
-
-  /api/services/bifrost/status:
-    get:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Get Bifrost status
-      description: Returns live and DB status for the supervised Bifrost service. **LOCAL_ONLY** — loopback only.
-      responses:
-        "200":
-          description: Bifrost service status
-
-  /api/services/bifrost/auto-start:
-    post:
-      x-loopback-only: true
-      tags: [Embedded Services]
-      summary: Toggle Bifrost auto-start
-      description: >-
-        When enabled, Bifrost starts automatically on the next OmniRoute boot.
-        **LOCAL_ONLY** — loopback only.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [enabled]
-              properties:
-                enabled:
-                  type: boolean
-      responses:
-        "204":
-          description: Auto-start flag updated
-        "400":
-          description: Invalid request body
-
   /api/services/{name}/logs:
     get:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Stream service logs via SSE
       description: >-
@@ -3817,7 +3516,6 @@ paths:
 
   /api/oauth/cursor/auto-import:
     get:
-      x-loopback-only: true
       tags: [OAuth]
       summary: Auto-import Cursor OAuth credentials
       description: Automatically detects and imports Cursor credentials from local config.
@@ -4695,7 +4393,6 @@ paths:
 
   /api/tools/agent-bridge/agents:
     get:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: List all 9 IDE agents with current state
       description: >-
@@ -4715,7 +4412,6 @@ paths:
 
   /api/tools/agent-bridge/state:
     get:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Get global AgentBridge server state
       description: Returns running status, port, cert info, and intercepted request count.
@@ -4729,7 +4425,6 @@ paths:
 
   /api/tools/agent-bridge/server:
     post:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Control AgentBridge MITM server
       description: Start, stop, restart, trust-cert, or regenerate-cert. SPAWN_CAPABLE.
@@ -4749,7 +4444,6 @@ paths:
 
   /api/tools/agent-bridge/agents/{agentId}/dns:
     post:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Enable or disable DNS for one agent
       description: Adds or removes /etc/hosts entries for the agent's host list. SPAWN_CAPABLE.
@@ -4773,7 +4467,6 @@ paths:
 
   /api/tools/agent-bridge/agents/{agentId}/mappings:
     get:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Get model mappings for one agent
       parameters:
@@ -4792,7 +4485,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/AgentBridgeMappingRow"
     put:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Update model mappings for one agent
       parameters:
@@ -4813,7 +4505,6 @@ paths:
 
   /api/tools/agent-bridge/bypass:
     get:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: List bypass patterns (hosts never decrypted)
       responses:
@@ -4826,7 +4517,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/AgentBridgeBypassRow"
     put:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Update user bypass patterns
       requestBody:
@@ -4841,7 +4531,6 @@ paths:
 
   /api/tools/agent-bridge/cert:
     post:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Download or regenerate the AgentBridge CA certificate
       requestBody:
@@ -4861,7 +4550,6 @@ paths:
 
   /api/tools/agent-bridge/upstream-ca:
     get:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Get configured upstream CA cert path
       responses:
@@ -4876,7 +4564,6 @@ paths:
                     type: string
                     nullable: true
     post:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Set upstream CA cert path for corporate TLS environments
       requestBody:
@@ -4895,7 +4582,6 @@ paths:
 
   /api/tools/traffic-inspector/requests:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: List intercepted requests (filterable)
       parameters:
@@ -4936,7 +4622,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/InterceptedRequest"
     delete:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Clear the in-memory traffic buffer
       responses:
@@ -4945,7 +4630,6 @@ paths:
 
   /api/tools/traffic-inspector/requests/{id}:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Get a single intercepted request by ID
       parameters:
@@ -4967,7 +4651,6 @@ paths:
 
   /api/tools/traffic-inspector/requests/{id}/replay:
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Replay a captured request through OmniRoute router
       description: Re-executes the original request body against /v1/chat/completions. Consumes quota.
@@ -4986,7 +4669,6 @@ paths:
 
   /api/tools/traffic-inspector/requests/{id}/annotation:
     put:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Save or update annotation on a request
       parameters:
@@ -5008,7 +4690,6 @@ paths:
 
   /api/tools/traffic-inspector/ws:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Live WebSocket stream of intercepted requests
       description: >-
@@ -5023,7 +4704,6 @@ paths:
 
   /api/tools/traffic-inspector/export.har:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Export current filtered request list as HAR 1.2
       parameters:
@@ -5048,7 +4728,6 @@ paths:
 
   /api/tools/traffic-inspector/hosts:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: List custom capture hosts
       responses:
@@ -5061,7 +4740,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/InspectorCustomHost"
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Add a custom capture host (edits /etc/hosts)
       requestBody:
@@ -5078,7 +4756,6 @@ paths:
 
   /api/tools/traffic-inspector/hosts/{host}:
     delete:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Remove a custom capture host
       parameters:
@@ -5091,7 +4768,6 @@ paths:
         "204":
           description: Host removed
     patch:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Toggle enabled state of a custom host
       parameters:
@@ -5116,7 +4792,6 @@ paths:
 
   /api/tools/traffic-inspector/capture-modes:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Get state of all 4 capture modes
       responses:
@@ -5129,7 +4804,6 @@ paths:
 
   /api/tools/traffic-inspector/capture-modes/http-proxy:
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Start or stop the HTTP_PROXY listener (port 8080)
       description: SPAWN_CAPABLE — spawns a net.Server listener.
@@ -5147,7 +4821,6 @@ paths:
 
   /api/tools/traffic-inspector/capture-modes/system-proxy:
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Apply or revert system-wide proxy settings
       description: SPAWN_CAPABLE — executes networksetup/gsettings/netsh. Requires admin.
@@ -5165,7 +4838,6 @@ paths:
 
   /api/tools/traffic-inspector/capture-modes/tls-intercept:
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Toggle TLS body decryption in HTTP_PROXY mode
       requestBody:
@@ -5180,7 +4852,6 @@ paths:
 
   /api/tools/traffic-inspector/sessions:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: List all saved recording sessions
       responses:
@@ -5193,7 +4864,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/InspectorSession"
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Start a new recording session
       requestBody:
@@ -5212,7 +4882,6 @@ paths:
 
   /api/tools/traffic-inspector/sessions/{id}:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Get session snapshot (all captured requests)
       parameters:
@@ -5228,7 +4897,6 @@ paths:
         "404":
           description: Session not found
     patch:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Stop or rename a recording session
       parameters:
@@ -5248,7 +4916,6 @@ paths:
         "200":
           description: Session updated
     delete:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Delete a recording session
       parameters:
@@ -5264,7 +4931,6 @@ paths:
 
   /api/tools/traffic-inspector/sessions/{id}/export.har:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Export a recorded session as HAR 1.2
       parameters:
@@ -5287,7 +4953,6 @@ paths:
 
   /api/tools/traffic-inspector/internal/ingest:
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Internal ingest endpoint for server.cjs passthrough path
       description: >-
@@ -5599,214 +5264,6 @@ paths:
           $ref: "#/components/responses/InternalError"
         "503":
           description: Generator module not available
-  /api/v1/ocr:
-    post:
-      tags:
-        - Images
-      summary: Document OCR
-      description: >-
-        Mistral OCR–compatible document OCR endpoint. Accepts a JSON body
-        referencing a document/image and returns extracted text. Success
-        responses carry the `X-OmniRoute-*` cost-telemetry headers.
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                model:
-                  type: string
-                document:
-                  type: object
-      responses:
-        "200":
-          description: OCR result with extracted text.
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/audio/translations:
-    post:
-      tags:
-        - Audio
-      summary: Translate audio to English
-      description: >-
-        OpenAI Whisper–compatible audio translation (multipart/form-data).
-        Unlike `/api/v1/audio/transcriptions`, output is always English
-        regardless of the source language. Success responses carry the
-        `X-OmniRoute-*` cost-telemetry headers.
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - file
-              properties:
-                file:
-                  type: string
-                  format: binary
-                model:
-                  type: string
-      responses:
-        "200":
-          description: English translation of the audio.
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/providers/suggested-models:
-    get:
-      tags:
-        - Providers
-      summary: Suggested media models
-      description: >-
-        Read-only server-side proxy to the public HuggingFace Hub models search
-        API, used by the dashboard to suggest models for a media provider kind
-        without exposing an HF token client-side. Never accepts or returns
-        credentials.
-      parameters:
-        - name: type
-          in: query
-          schema:
-            type: string
-          description: Media kind to search for (e.g. `image`, `audio`, `video`).
-      responses:
-        "200":
-          description: List of suggested HuggingFace Hub models.
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/provider-plugin-manifest:
-    get:
-      tags:
-        - Providers
-      summary: Provider plugin manifest
-      description: Returns the manifest describing installed provider plugins.
-      responses:
-        "200":
-          description: Provider plugin manifest.
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/keys/{id}/devices:
-    get:
-      tags:
-        - API Keys
-      summary: List devices for an API key
-      description: >-
-        Lists the distinct devices (masked IP + User-Agent fingerprints)
-        tracked for an API key by the in-memory device tracker. IPs are masked
-        before storage; the route never sees the raw client IP.
-      x-internal: true
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Distinct devices seen for the API key.
-        "401":
-          $ref: "#/components/responses/ManagementAuthenticationRequired"
-        "404":
-          $ref: "#/components/responses/NotFound"
-  /api/settings/purge-usage-history:
-    post:
-      tags:
-        - Settings
-      summary: Purge usage history
-      description: Dashboard-only. Purges stored usage-history records.
-      x-internal: true
-      responses:
-        "200":
-          description: Usage history purged.
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /api/oauth/codex/import-token:
-    post:
-      tags:
-        - OAuth
-      summary: Import a Codex connection from a bare access token
-      description: >-
-        Dashboard-only. Creates a Codex (ChatGPT/OpenAI) connection from a raw
-        access token with no refresh token (authType `access_token`).
-      x-internal: true
-      responses:
-        "200":
-          description: Connection imported.
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /api/cli-tools/crush-settings:
-    get:
-      tags:
-        - CLI Tools
-      summary: Read Crush CLI OmniRoute config
-      description: Local-only. Reads the OmniRoute provider block in Crush's config.
-      x-internal: true
-      responses:
-        "200":
-          description: Current Crush config state.
-    post:
-      tags:
-        - CLI Tools
-      summary: Write Crush CLI OmniRoute config
-      description: Local-only. Registers OmniRoute as an `openai-compat` provider in Crush's config.
-      x-internal: true
-      responses:
-        "200":
-          description: Crush config updated.
-    delete:
-      tags:
-        - CLI Tools
-      summary: Remove OmniRoute from Crush CLI config
-      description: Local-only. Removes the OmniRoute provider block from Crush's config.
-      x-internal: true
-      responses:
-        "200":
-          description: Crush config entry removed.
-  /api/cli-tools/codewhale-settings:
-    get:
-      tags:
-        - CLI Tools
-      summary: Read CodeWhale CLI OmniRoute config
-      description: >-
-        Local-only. Reads the OmniRoute config block from
-        `~/.codewhale/config.toml` (with `~/.deepseek/config.toml` legacy
-        fallback).
-      x-internal: true
-      responses:
-        "200":
-          description: Current CodeWhale config state.
-    post:
-      tags:
-        - CLI Tools
-      summary: Write CodeWhale CLI OmniRoute config
-      description: Local-only. Writes the OmniRoute config block in CodeWhale TOML format.
-      x-internal: true
-      responses:
-        "200":
-          description: CodeWhale config updated.
-    delete:
-      tags:
-        - CLI Tools
-      summary: Remove OmniRoute from CodeWhale CLI config
-      description: Local-only. Removes the OmniRoute config block from CodeWhale's config.
-      x-internal: true
-      responses:
-        "200":
-          description: CodeWhale config entry removed.
 
 components:
   securitySchemes:
@@ -7215,13 +6672,10 @@ components:
             - least-used
             - cost-optimized
             - reset-aware
-            - reset-window
-            - headroom
             - strict-random
             - auto
             - lkgp
             - context-optimized
-            - fusion
           default: priority
         nodes:
           type: array

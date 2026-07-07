@@ -117,12 +117,6 @@ class LoginManager extends EventEmitter {
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
-        // The login window renders an untrusted third-party provider page, so
-        // sandbox it. There is no preload here, and main-process navigation/
-        // cookie tracking via webContents.session is unaffected by the renderer
-        // sandbox.
-        sandbox: true,
-        webSecurity: true,
         session: session.fromPartition(`login-${providerId}-${Date.now()}`),
       },
       show: true,

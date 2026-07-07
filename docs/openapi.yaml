@@ -2818,7 +2818,6 @@ paths:
 
   /api/cli-tools/runtime/{toolId}:
     get:
-      x-loopback-only: true
       tags: [CLI Tools]
       summary: Get runtime status for a CLI tool
       parameters:
@@ -3091,7 +3090,6 @@ paths:
 
   /api/services/9router/install:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Install 9Router from npm
       description: >-
@@ -3130,7 +3128,6 @@ paths:
 
   /api/services/9router/start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Start 9Router
       description: >-
@@ -3150,7 +3147,6 @@ paths:
 
   /api/services/9router/stop:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Stop 9Router
       description: >-
@@ -3168,7 +3164,6 @@ paths:
 
   /api/services/9router/restart:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Restart 9Router
       description: >-
@@ -3184,7 +3179,6 @@ paths:
 
   /api/services/9router/update:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Update 9Router to a newer npm version
       description: >-
@@ -3221,7 +3215,6 @@ paths:
 
   /api/services/9router/rotate-key:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Rotate the 9Router API key
       description: >-
@@ -3245,7 +3238,6 @@ paths:
 
   /api/services/9router/status:
     get:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Get 9Router status
       description: >-
@@ -3263,7 +3255,6 @@ paths:
 
   /api/services/9router/auto-start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Toggle 9Router auto-start
       description: >-
@@ -3294,7 +3285,6 @@ paths:
 
   /api/services/cliproxy/install:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Install CLIProxyAPI from npm
       description: >-
@@ -3329,7 +3319,6 @@ paths:
 
   /api/services/cliproxy/start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Start CLIProxyAPI
       description: >-
@@ -3349,7 +3338,6 @@ paths:
 
   /api/services/cliproxy/stop:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Stop CLIProxyAPI
       description: >-
@@ -3365,7 +3353,6 @@ paths:
 
   /api/services/cliproxy/restart:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Restart CLIProxyAPI
       description: >-
@@ -3381,7 +3368,6 @@ paths:
 
   /api/services/cliproxy/update:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Update CLIProxyAPI to a newer npm version
       description: >-
@@ -3414,7 +3400,6 @@ paths:
 
   /api/services/cliproxy/status:
     get:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Get CLIProxyAPI status
       description: >-
@@ -3431,7 +3416,6 @@ paths:
 
   /api/services/cliproxy/auto-start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Toggle CLIProxyAPI auto-start
       description: >-
@@ -3462,7 +3446,6 @@ paths:
 
   /api/services/mux/install:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Install Mux from npm
       description: >-
@@ -3497,7 +3480,6 @@ paths:
 
   /api/services/mux/start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Start Mux
       description: >-
@@ -3517,7 +3499,6 @@ paths:
 
   /api/services/mux/stop:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Stop Mux
       description: >-
@@ -3533,7 +3514,6 @@ paths:
 
   /api/services/mux/restart:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Restart Mux
       description: >-
@@ -3549,7 +3529,6 @@ paths:
 
   /api/services/mux/update:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Update Mux to a newer npm version
       description: >-
@@ -3582,7 +3561,6 @@ paths:
 
   /api/services/mux/status:
     get:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Get Mux status
       description: >-
@@ -3598,7 +3576,6 @@ paths:
 
   /api/services/mux/auto-start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Toggle Mux auto-start
       description: >-
@@ -3629,7 +3606,6 @@ paths:
 
   /api/services/bifrost/install:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Install Bifrost
       description: >-
@@ -3665,7 +3641,6 @@ paths:
 
   /api/services/bifrost/start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Start Bifrost
       description: Starts the supervised Bifrost process. **LOCAL_ONLY** — loopback only.
@@ -3677,7 +3652,6 @@ paths:
 
   /api/services/bifrost/stop:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Stop Bifrost
       description: Stops the supervised Bifrost process. **LOCAL_ONLY** — loopback only.
@@ -3687,7 +3661,6 @@ paths:
 
   /api/services/bifrost/restart:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Restart Bifrost
       description: Restarts the supervised Bifrost process. **LOCAL_ONLY** — loopback only.
@@ -3699,7 +3672,6 @@ paths:
 
   /api/services/bifrost/update:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Update Bifrost
       description: >-
@@ -3712,7 +3684,6 @@ paths:
 
   /api/services/bifrost/status:
     get:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Get Bifrost status
       description: Returns live and DB status for the supervised Bifrost service. **LOCAL_ONLY** — loopback only.
@@ -3722,7 +3693,6 @@ paths:
 
   /api/services/bifrost/auto-start:
     post:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Toggle Bifrost auto-start
       description: >-
@@ -3746,7 +3716,6 @@ paths:
 
   /api/services/{name}/logs:
     get:
-      x-loopback-only: true
       tags: [Embedded Services]
       summary: Stream service logs via SSE
       description: >-
@@ -3817,7 +3786,6 @@ paths:
 
   /api/oauth/cursor/auto-import:
     get:
-      x-loopback-only: true
       tags: [OAuth]
       summary: Auto-import Cursor OAuth credentials
       description: Automatically detects and imports Cursor credentials from local config.
@@ -4695,7 +4663,6 @@ paths:
 
   /api/tools/agent-bridge/agents:
     get:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: List all 9 IDE agents with current state
       description: >-
@@ -4715,7 +4682,6 @@ paths:
 
   /api/tools/agent-bridge/state:
     get:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Get global AgentBridge server state
       description: Returns running status, port, cert info, and intercepted request count.
@@ -4729,7 +4695,6 @@ paths:
 
   /api/tools/agent-bridge/server:
     post:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Control AgentBridge MITM server
       description: Start, stop, restart, trust-cert, or regenerate-cert. SPAWN_CAPABLE.
@@ -4749,7 +4714,6 @@ paths:
 
   /api/tools/agent-bridge/agents/{agentId}/dns:
     post:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Enable or disable DNS for one agent
       description: Adds or removes /etc/hosts entries for the agent's host list. SPAWN_CAPABLE.
@@ -4773,7 +4737,6 @@ paths:
 
   /api/tools/agent-bridge/agents/{agentId}/mappings:
     get:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Get model mappings for one agent
       parameters:
@@ -4792,7 +4755,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/AgentBridgeMappingRow"
     put:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Update model mappings for one agent
       parameters:
@@ -4813,7 +4775,6 @@ paths:
 
   /api/tools/agent-bridge/bypass:
     get:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: List bypass patterns (hosts never decrypted)
       responses:
@@ -4826,7 +4787,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/AgentBridgeBypassRow"
     put:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Update user bypass patterns
       requestBody:
@@ -4841,7 +4801,6 @@ paths:
 
   /api/tools/agent-bridge/cert:
     post:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Download or regenerate the AgentBridge CA certificate
       requestBody:
@@ -4861,7 +4820,6 @@ paths:
 
   /api/tools/agent-bridge/upstream-ca:
     get:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Get configured upstream CA cert path
       responses:
@@ -4876,7 +4834,6 @@ paths:
                     type: string
                     nullable: true
     post:
-      x-loopback-only: true
       tags: [AgentBridge]
       summary: Set upstream CA cert path for corporate TLS environments
       requestBody:
@@ -4895,7 +4852,6 @@ paths:
 
   /api/tools/traffic-inspector/requests:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: List intercepted requests (filterable)
       parameters:
@@ -4936,7 +4892,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/InterceptedRequest"
     delete:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Clear the in-memory traffic buffer
       responses:
@@ -4945,7 +4900,6 @@ paths:
 
   /api/tools/traffic-inspector/requests/{id}:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Get a single intercepted request by ID
       parameters:
@@ -4967,7 +4921,6 @@ paths:
 
   /api/tools/traffic-inspector/requests/{id}/replay:
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Replay a captured request through OmniRoute router
       description: Re-executes the original request body against /v1/chat/completions. Consumes quota.
@@ -4986,7 +4939,6 @@ paths:
 
   /api/tools/traffic-inspector/requests/{id}/annotation:
     put:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Save or update annotation on a request
       parameters:
@@ -5008,7 +4960,6 @@ paths:
 
   /api/tools/traffic-inspector/ws:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Live WebSocket stream of intercepted requests
       description: >-
@@ -5023,7 +4974,6 @@ paths:
 
   /api/tools/traffic-inspector/export.har:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Export current filtered request list as HAR 1.2
       parameters:
@@ -5048,7 +4998,6 @@ paths:
 
   /api/tools/traffic-inspector/hosts:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: List custom capture hosts
       responses:
@@ -5061,7 +5010,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/InspectorCustomHost"
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Add a custom capture host (edits /etc/hosts)
       requestBody:
@@ -5078,7 +5026,6 @@ paths:
 
   /api/tools/traffic-inspector/hosts/{host}:
     delete:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Remove a custom capture host
       parameters:
@@ -5091,7 +5038,6 @@ paths:
         "204":
           description: Host removed
     patch:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Toggle enabled state of a custom host
       parameters:
@@ -5116,7 +5062,6 @@ paths:
 
   /api/tools/traffic-inspector/capture-modes:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Get state of all 4 capture modes
       responses:
@@ -5129,7 +5074,6 @@ paths:
 
   /api/tools/traffic-inspector/capture-modes/http-proxy:
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Start or stop the HTTP_PROXY listener (port 8080)
       description: SPAWN_CAPABLE — spawns a net.Server listener.
@@ -5147,7 +5091,6 @@ paths:
 
   /api/tools/traffic-inspector/capture-modes/system-proxy:
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Apply or revert system-wide proxy settings
       description: SPAWN_CAPABLE — executes networksetup/gsettings/netsh. Requires admin.
@@ -5165,7 +5108,6 @@ paths:
 
   /api/tools/traffic-inspector/capture-modes/tls-intercept:
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Toggle TLS body decryption in HTTP_PROXY mode
       requestBody:
@@ -5180,7 +5122,6 @@ paths:
 
   /api/tools/traffic-inspector/sessions:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: List all saved recording sessions
       responses:
@@ -5193,7 +5134,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/InspectorSession"
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Start a new recording session
       requestBody:
@@ -5212,7 +5152,6 @@ paths:
 
   /api/tools/traffic-inspector/sessions/{id}:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Get session snapshot (all captured requests)
       parameters:
@@ -5228,7 +5167,6 @@ paths:
         "404":
           description: Session not found
     patch:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Stop or rename a recording session
       parameters:
@@ -5248,7 +5186,6 @@ paths:
         "200":
           description: Session updated
     delete:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Delete a recording session
       parameters:
@@ -5264,7 +5201,6 @@ paths:
 
   /api/tools/traffic-inspector/sessions/{id}/export.har:
     get:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Export a recorded session as HAR 1.2
       parameters:
@@ -5287,7 +5223,6 @@ paths:
 
   /api/tools/traffic-inspector/internal/ingest:
     post:
-      x-loopback-only: true
       tags: [Traffic Inspector]
       summary: Internal ingest endpoint for server.cjs passthrough path
       description: >-

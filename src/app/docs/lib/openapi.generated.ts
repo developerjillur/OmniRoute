@@ -25,7 +25,7 @@ export interface OpenApiEndpoint {
   hasRequestBody: boolean;
 }
 
-export const OPENAPI_VERSION = "3.8.44";
+export const OPENAPI_VERSION = "3.8.35";
 export const OPENAPI_TITLE = "OmniRoute API";
 
 export const OPENAPI_ENDPOINTS: OpenApiEndpoint[] = [
@@ -64,16 +64,6 @@ export const OPENAPI_ENDPOINTS: OpenApiEndpoint[] = [
     method: "POST",
     summary: "Transcribe audio",
     description: "Audio-to-text transcription endpoint.",
-    tag: "Audio",
-    tags: ["Audio"],
-    requiresAuth: true,
-    hasRequestBody: true,
-  },
-  {
-    path: "/api/v1/audio/translations",
-    method: "POST",
-    summary: "Translate audio to English",
-    description: "OpenAI Whisper–compatible audio translation (multipart/form-data). Unlike `/api/v1/audio/transcriptions`, output is always English regardless of the source language. Success responses carry the `X-OmniRoute-*` cost-telemetry headers.",
     tag: "Audio",
     tags: ["Audio"],
     requiresAuth: true,
@@ -150,26 +140,6 @@ export const OPENAPI_ENDPOINTS: OpenApiEndpoint[] = [
     hasRequestBody: true,
   },
   {
-    path: "/api/v1/ocr",
-    method: "POST",
-    summary: "Document OCR",
-    description: "Mistral OCR–compatible document OCR endpoint. Accepts a JSON body referencing a document/image and returns extracted text. Success responses carry the `X-OmniRoute-*` cost-telemetry headers.",
-    tag: "Images",
-    tags: ["Images"],
-    requiresAuth: true,
-    hasRequestBody: true,
-  },
-  {
-    path: "/api/v1/provider-plugin-manifest",
-    method: "GET",
-    summary: "Provider plugin manifest",
-    description: "Returns the manifest describing installed provider plugins.",
-    tag: "Providers",
-    tags: ["Providers"],
-    requiresAuth: false,
-    hasRequestBody: false,
-  },
-  {
     path: "/api/v1/providers/{provider}/chat/completions",
     method: "POST",
     summary: "Create chat completion (provider-specific)",
@@ -207,16 +177,6 @@ export const OPENAPI_ENDPOINTS: OpenApiEndpoint[] = [
     tag: "Models",
     tags: ["Models"],
     requiresAuth: true,
-    hasRequestBody: false,
-  },
-  {
-    path: "/api/v1/providers/suggested-models",
-    method: "GET",
-    summary: "Suggested media models",
-    description: "Read-only server-side proxy to the public HuggingFace Hub models search API, used by the dashboard to suggest models for a media provider kind without exposing an HF token client-side. Never accepts or returns credentials.",
-    tag: "Providers",
-    tags: ["Providers"],
-    requiresAuth: false,
     hasRequestBody: false,
   },
   {

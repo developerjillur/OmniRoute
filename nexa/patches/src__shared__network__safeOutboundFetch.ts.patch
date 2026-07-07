@@ -1,0 +1,77 @@
+diff --git a/src/shared/network/safeOutboundFetch.ts b/src/shared/network/safeOutboundFetch.ts
+index 90cc54e..a4a651d 100644
+--- a/src/shared/network/safeOutboundFetch.ts
++++ b/src/shared/network/safeOutboundFetch.ts
+@@ -1,8 +1,12 @@
++import dns from "node:dns";
++import { isIP } from "node:net";
+ import { runWithProxyContext, getOriginalFetch } from "@omniroute/open-sse/utils/proxyFetch.ts";
+ import { FetchTimeoutError, fetchWithTimeout } from "@/shared/utils/fetchTimeout";
+ import {
+   OutboundUrlGuardError,
+   type OutboundUrlGuardMode,
++  isCloudMetadataHost,
++  isPrivateHost,
+   parseAndValidateNonMetadataUrl,
+   parseAndValidatePublicUrl,
+   parseOutboundUrl,
+@@ -183,6 +187,50 @@ function applyUrlGuard(targetUrl: URL, guard: SafeOutboundFetchGuard, method: st
+   }
+ }
+ 
++/**
++ * SECURITY_AUDIT M3 — DNS-rebinding defence. `applyUrlGuard` only inspects the
++ * hostname STRING, so a public-looking host that RESOLVES to metadata/private
++ * space would still be fetched (GHSA-cmhj-wh2f-9cgx class). Resolve the host
++ * up-front and reject by RESOLVED IP:
++ *   - `block-metadata` (provider-validation default): reject cloud-metadata /
++ *     169.254.0.0/16 answers — the SSRF→IMDS pivot — while still allowing LAN.
++ *   - `public-only`: reject any private answer.
++ * IP literals are skipped (already validated by the string guard). Fail-OPEN on
++ * resolution error so a legit-but-flaky-DNS provider (or an offline test) is never
++ * blocked — only a host that ACTUALLY resolves to a blocked address is rejected.
++ * This narrows but does not fully close the TOCTOU window vs. fetch's own
++ * resolution (undici IP-pinning would; deferred to stay surgical).
++ */
++async function assertResolvedAddressAllowed(
++  url: URL,
++  guard: SafeOutboundFetchGuard,
++  method: string
++): Promise<void> {
++  if (guard === "none") return;
++  const hostname = url.hostname;
++  const bare =
++    hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
++  if (!bare || isIP(bare)) return; // IP literal — already validated by applyUrlGuard
++
++  let resolved: Array<{ address: string }>;
++  try {
++    resolved = await dns.promises.lookup(bare, { all: true });
++  } catch {
++    return; // unresolvable — let the fetch fail naturally; nothing to rebind to
++  }
++  for (const { address } of resolved) {
++    const blocked = guard === "public-only" ? isPrivateHost(address) : isCloudMetadataHost(address);
++    if (blocked) {
++      throw new SafeOutboundFetchError(
++        `Host '${bare}' resolves to a blocked ${
++          guard === "public-only" ? "private" : "cloud-metadata"
++        } address (${address}) — DNS rebinding blocked`,
++        { code: "URL_GUARD_BLOCKED", url: url.toString(), method, attempts: 1, isRetryable: false }
++      );
++    }
++  }
++}
++
+ function getRetryConfig(retry: SafeOutboundFetchRetryOptions | false | undefined, method: string) {
+   if (retry === false) {
+     return {
+@@ -281,6 +329,8 @@ export async function safeOutboundFetch(url: string | URL, options: SafeOutbound
+   } = options;
+ 
+   applyUrlGuard(targetUrl, guard, method);
++  // M3: resolve-then-reject DNS-rebinding guard (string check above is not enough).
++  await assertResolvedAddressAllowed(targetUrl, guard, method);
+ 
+   const retryConfig = getRetryConfig(retry, method);
+   const redirect = allowRedirect ? (fetchOptions.redirect ?? "follow") : "manual";

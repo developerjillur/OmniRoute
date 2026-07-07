@@ -18,13 +18,9 @@ describe("Antigravity account quota-family cooldown", () => {
     vi.useRealTimers();
   });
 
-  it("maps Gemini flash/pro to distinct sub-families and Claude/Cloud to Claude family", () => {
-    // Gemini quota families are split (flash vs pro) so a Pro 429 does not cool
-    // down Flash models on the same account (they have separate quota windows).
-    expect(getAntigravityQuotaFamily("gemini-3.5-flash-medium")).toBe("gemini-flash");
-    expect(getAntigravityQuotaFamily("google/gemini-3.5-flash-low")).toBe("gemini-flash");
-    expect(getAntigravityQuotaFamily("gemini-2.5-pro")).toBe("gemini-pro");
-    expect(getAntigravityQuotaFamily("gemini-3-pro-preview")).toBe("gemini-pro");
+  it("maps Gemini variants to Gemini family and Claude/Cloud variants to Claude family", () => {
+    expect(getAntigravityQuotaFamily("gemini-3.5-flash-medium")).toBe("gemini");
+    expect(getAntigravityQuotaFamily("google/gemini-3.5-flash-low")).toBe("gemini");
     expect(getAntigravityQuotaFamily("claude-sonnet-4")).toBe("claude");
     expect(getAntigravityQuotaFamily("cloud/claude-opus-4")).toBe("claude");
     expect(getAntigravityQuotaFamily("some-new-model")).toBe("other");
@@ -32,12 +28,9 @@ describe("Antigravity account quota-family cooldown", () => {
 
   it("uses family-scoped lock key for Antigravity but preserves exact-model scope elsewhere", () => {
     expect(getQuotaScopedModelForProvider(provider, "gemini-3.5-flash-medium")).toBe(
-      "family:gemini-flash"
+      "family:gemini"
     );
-    expect(getQuotaScopedModelForProvider(provider, "gemini-3.5-flash-low")).toBe(
-      "family:gemini-flash"
-    );
-    expect(getQuotaScopedModelForProvider(provider, "gemini-2.5-pro")).toBe("family:gemini-pro");
+    expect(getQuotaScopedModelForProvider(provider, "gemini-3.5-flash-low")).toBe("family:gemini");
     expect(getQuotaScopedModelForProvider(provider, "claude-sonnet-4")).toBe("family:claude");
     expect(getQuotaScopedModelForProvider(provider, "unknown-model")).toBe("unknown-model");
     expect(getQuotaScopedModelForProvider("openai", "gemini-3.5-flash-medium")).toBe(

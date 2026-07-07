@@ -216,25 +216,13 @@ export async function withEarlyStreamKeepalive(
     },
   });
 
-  // Preserve the SOURCE response's headers (x-omniroute-* metadata, session/correlation
-  // ids, route-class, etc.) on the keepalive-wrapped stream. This path was silently
-  // dropping every observability header that the verbatim fast-path keeps — the reason
-  // streaming responses lacked provider/model/request-id/session-id (QA finding: streaming
-  // telemetry). Override only the streaming transport headers; strip stale content framing.
-  const keepaliveHeaders = new Headers(response.headers);
-  keepaliveHeaders.set("Content-Type", "text/event-stream; charset=utf-8");
-  keepaliveHeaders.set("Cache-Control", "no-cache, no-transform");
-  keepaliveHeaders.set("Connection", "keep-alive");
-  keepaliveHeaders.delete("content-length");
-  keepaliveHeaders.delete("content-encoding");
-  keepaliveHeaders.delete("transfer-encoding");
-  // MERGE (v3.8.45): apply upstream's `extraHeaders` option ON TOP of our
-  // preserved source headers. keepaliveHeaders already carries the source
-  // response's x-omniroute-* metadata (our streaming-telemetry fix) — upstream's
-  // fresh-headers approach would have dropped it. Both behaviours retained.
-  for (const [key, value] of Object.entries(extraHeaders)) keepaliveHeaders.set(key, value);
   return new Response(stream, {
     status: 200,
-    headers: keepaliveHeaders,
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      ...extraHeaders,
+    },
   });
 }

@@ -1,0 +1,50 @@
+diff --git a/src/lib/guardrails/registry.ts b/src/lib/guardrails/registry.ts
+index b90cd21..8da391d 100644
+--- a/src/lib/guardrails/registry.ts
++++ b/src/lib/guardrails/registry.ts
+@@ -63,19 +63,32 @@ export function resolveDisabledGuardrails({
+     bodyRecord?.metadata && typeof bodyRecord.metadata === "object"
+       ? (bodyRecord.metadata as Record<string, unknown>)
+       : null;
+-  const apiKeyDisabled =
+-    apiKeyInfo && typeof apiKeyInfo === "object"
+-      ? (apiKeyInfo as Record<string, unknown>).disabledGuardrails
+-      : undefined;
+-  const headerDisabled =
+-    getHeaderValue(headers, "x-omniroute-disabled-guardrails") ||
+-    getHeaderValue(headers, "x-disabled-guardrails");
+-
+-  return [...coerceDisabledGuardrails(apiKeyDisabled)]
+-    .concat(coerceDisabledGuardrails(bodyRecord?.disabledGuardrails))
+-    .concat(coerceDisabledGuardrails(metadata?.disabledGuardrails))
+-    .concat(coerceDisabledGuardrails(headerDisabled))
+-    .filter((value, index, list) => list.indexOf(value) === index);
++  const apiKeyRecord =
++    apiKeyInfo && typeof apiKeyInfo === "object" ? (apiKeyInfo as Record<string, unknown>) : null;
++  // Operator-configured, per-key disables — always honored (this is the operator's own policy).
++  const apiKeyDisabled = apiKeyRecord?.disabledGuardrails;
++
++  // SECURITY_AUDIT M1: client-supplied disables (request body / metadata / headers)
++  // are ONLY honored when the API key explicitly opts in via
++  // `allowClientGuardrailOverride: true`. Without that gate, any caller holding a
++  // valid key could add `"disabledGuardrails":["prompt-injection","pii-masker"]`
++  // and switch off OPERATOR-MANDATED guardrails per request. Default = ignore
++  // client-supplied disables entirely.
++  const clientOverrideAllowed = apiKeyRecord?.allowClientGuardrailOverride === true;
++  const clientDisabled = clientOverrideAllowed
++    ? [
++        ...coerceDisabledGuardrails(bodyRecord?.disabledGuardrails),
++        ...coerceDisabledGuardrails(metadata?.disabledGuardrails),
++        ...coerceDisabledGuardrails(
++          getHeaderValue(headers, "x-omniroute-disabled-guardrails") ||
++            getHeaderValue(headers, "x-disabled-guardrails")
++        ),
++      ]
++    : [];
++
++  return [...coerceDisabledGuardrails(apiKeyDisabled), ...clientDisabled].filter(
++    (value, index, list) => list.indexOf(value) === index
++  );
+ }
+ 
+ export class GuardrailRegistry {

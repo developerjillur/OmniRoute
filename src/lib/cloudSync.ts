@@ -45,24 +45,15 @@ function toDateMs(value: unknown): number {
 // secret yet). The enforce-by-default switch will flip in v3.9.
 export function verifyCloudSignature(rawBody: string, sigHeader: string | null): boolean {
   if (!CLOUD_SYNC_SECRET) {
-    // Fail-CLOSED by default (SECURITY_AUDIT M7): without a shared secret we cannot
-    // verify authenticity, so a malicious/MITM Cloud endpoint could inject providers
-    // or tokens. A response that DOES carry X-Cloud-Sig is precisely that injection
-    // case (it claims to be signed while we hold no key) — reject it. Legacy operators
-    // who knowingly run unverified must opt in explicitly.
-    const allowUnverified = process.env.OMNIROUTE_CLOUD_SYNC_ALLOW_UNVERIFIED === "true";
-    if (allowUnverified) {
-      console.warn(
-        "[cloudSync] Running in UNVERIFIED mode (OMNIROUTE_CLOUD_SYNC_ALLOW_UNVERIFIED=true) — " +
-          "set OMNIROUTE_CLOUD_SYNC_SECRET to enforce HMAC verification."
-      );
+    if (sigHeader) {
+      // We can't verify, but the server is at least trying. Pass through.
       return true;
     }
     console.warn(
-      "[cloudSync] OMNIROUTE_CLOUD_SYNC_SECRET is not set — rejecting Cloud payload (fail-closed). " +
-        "Set the secret, or OMNIROUTE_CLOUD_SYNC_ALLOW_UNVERIFIED=true to opt into legacy unverified mode."
+      "[cloudSync] OMNIROUTE_CLOUD_SYNC_SECRET is not set and the Cloud response carries no X-Cloud-Sig. " +
+        "Token sync runs in legacy unverified mode — set the secret to enforce HMAC verification."
     );
-    return false;
+    return true;
   }
   if (!sigHeader) {
     console.warn("[cloudSync] Cloud response missing X-Cloud-Sig — rejecting payload.");
