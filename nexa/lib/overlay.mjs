@@ -183,3 +183,24 @@ export function baseVersion() {
   } catch {}
   return { sha, version };
 }
+
+// ---- release tracking ------------------------------------------------------
+// A production earning gateway tracks upstream RELEASE TAGS, not bleeding-edge `main`.
+// Newest release tag (semver `vX.Y.Z`), using git's own version sort.
+export function latestReleaseTag() {
+  const out = git(["tag", "-l", "v*", "--sort=-v:refname"], { allowFail: true }) || "";
+  const tags = out
+    .split("\n")
+    .map((s) => s.trim())
+    .filter((t) => /^v\d+\.\d+\.\d+$/.test(t));
+  return tags[0] || null;
+}
+
+// Are we already on the newest release? (base commit == the tag's commit)
+export function releaseStatus() {
+  const tag = latestReleaseTag();
+  if (!tag) return { tag: null, onLatest: null, baseSha: null, tagSha: null };
+  const baseSha = git(["rev-parse", BASE_REF], { allowFail: true });
+  const tagSha = git(["rev-parse", `${tag}^{commit}`], { allowFail: true });
+  return { tag, baseSha, tagSha, onLatest: !!baseSha && baseSha === tagSha };
+}

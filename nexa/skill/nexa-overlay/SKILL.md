@@ -51,15 +51,19 @@ node nexa/status.mjs           # base version, pristine/applied state, patch hea
 node nexa/setup.mjs            # install this skill + the maintainer agent into local .claude/ (per clone)
 node nexa/apply.mjs --check    # verify every patch still applies onto the base (no mutation)
 node nexa/build.mjs            # apply → npm run build → AUTO-RESTORE (the deploy build)
-node nexa/update.mjs           # on-demand upstream pull: fetch, ff base, merge (conflict-free), patch-health
+node nexa/update.mjs           # on-demand: pull the latest upstream RELEASE tag (conflict-free); --main = bleeding edge
 node nexa/restore.mjs          # undo a manual apply (return to pristine)
 node nexa/gen-manifest.mjs     # regenerate nexa/manifest.json from live contents
 ```
 
 ## Update upstream (the core loop)
 
-1. `node nexa/update.mjs` — fetches upstream, ff's `upstream-main`, merges into `nexalance`
-   (conflict-free), then checks every patch against the new base.
+1. `node nexa/update.mjs` — fetches upstream **release tags**, and if a newer release than our base
+   exists, ff's `upstream-main` to that RELEASE TAG and merges into `nexalance` (conflict-free), then
+   checks every patch. It tracks releases, NOT bleeding-edge `main` (a production earning gateway must
+   not run unreleased code); pass `--main` only to deliberately target `upstream/main`. If already on the
+   latest release it no-ops ("nothing to pull") — e.g. our merged upstream PRs arrive when upstream cuts
+   the next release, and re-running then pulls them + flags the now-redundant patches for deletion.
 2. **If it reports failing patches**, re-cut each (see next section). Re-run `node nexa/apply.mjs --check`
    until clean.
 3. **Validate + deploy**: `node nexa/build.mjs` → run the gate → smoke out-of-band → flip launchd

@@ -7,7 +7,7 @@ import {
   listPatches,
   listNewFiles,
   isApplied,
-  git,
+  releaseStatus,
 } from "./lib/overlay.mjs";
 
 const { sha, version } = baseVersion();
@@ -15,11 +15,12 @@ console.log(`\n  NexaLance OmniRoute overlay — status`);
 console.log(`  ─────────────────────────────────────`);
 console.log(`  base (upstream-main): v${version} @ ${sha}`);
 
-// how far behind upstream (only if we have a local upstream/main ref; no network)
-const behind = git(["rev-list", "--count", "upstream-main..upstream/main"], { allowFail: true });
-if (behind && behind !== "0")
-  console.log(`  upstream/main is ${behind} commit(s) AHEAD — run \`node nexa/update.mjs\``);
-else if (behind === "0") console.log(`  up to date with local upstream/main (fetch to be sure)`);
+// release tracking: are we on the newest upstream RELEASE tag? (uses local tags; no network)
+const rel = releaseStatus();
+if (rel.tag && rel.onLatest) console.log(`  release: ✓ on the latest upstream release ${rel.tag}`);
+else if (rel.tag)
+  console.log(`  release: ⚠ ${rel.tag} available (base is behind) — run \`node nexa/update.mjs\``);
+else console.log(`  release: (no release tags fetched yet — run \`node nexa/update.mjs\`)`);
 
 console.log(`  overlay: ${listPatches().length} patches · ${listNewFiles().length} new files`);
 
