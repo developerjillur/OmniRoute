@@ -49,7 +49,7 @@ git add -A && git commit && git push origin nexalance
 npm install && npm run build
 # NOTE: the current procedure (SKILL "Deploy" step) smokes the build OUT-OF-BAND on a
 # throwaway port/data-dir FIRST, and only kickstarts live if that passes:
-#   PORT=28129 DATA_DIR=/tmp/omni-smoke node .build/next/standalone/dev/run-standalone.mjs
+#   (cd .build/next/standalone && PORT=28129 DATA_DIR=/tmp/omni-smoke node dev/run-standalone.mjs)  # MUST cd first — server.js resolves off CWD
 launchctl kickstart -k "gui/$(id -u)/com.nexalance.omniroute-test"   # flip live, then re-smoke :28128
 git branch -D nexa/sync-<sha>
 ```
