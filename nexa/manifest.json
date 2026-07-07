@@ -1,7 +1,7 @@
 {
   "_comment": "NexaLance OmniRoute child-theme overlay registry. layer: patch=surgical diff onto pristine upstream; new=net-new file copied in at build; tooling=overlay machinery. class: upstream-candidate=generic fix worth PRing to diegosouzapw/OmniRoute (Phase-2 shrinker); nexa-specific=stays in the overlay; needs-review=triage. Base stays byte-for-byte pristine; regenerate with `node nexa/gen-manifest.mjs`.",
   "upstreamBase": {
-    "sha": "3ddcee6",
+    "sha": "3ddcee63",
     "version": "3.8.45"
   },
   "productionBranch": "nexalance",
@@ -13,7 +13,9 @@
     "tooling": 2,
     "upstreamCandidates": 46,
     "nexaSpecific": 6,
-    "needsReview": 3
+    "needsReview": 3,
+    "pendingUpstreamPR": 11,
+    "mergedUpstreamPR": 3
   },
   "items": [
     {
@@ -94,7 +96,10 @@
       "class": "needs-review",
       "target": "open-sse/handlers/chatCore.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6558,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/open-sse__handlers__chatCore__idempotency.ts.patch",
@@ -102,7 +107,10 @@
       "class": "needs-review",
       "target": "open-sse/handlers/chatCore/idempotency.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6558,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/open-sse__services____tests____antigravity-quota-family.test.ts.patch",
@@ -134,7 +142,10 @@
       "class": "upstream-candidate",
       "target": "open-sse/services/combo.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6545,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/open-sse__services__errorClassifier.ts.patch",
@@ -142,7 +153,10 @@
       "class": "upstream-candidate",
       "target": "open-sse/services/errorClassifier.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6452,
+        "state": "MERGED"
+      }
     },
     {
       "file": "patches/open-sse__utils__earlyStreamKeepalive.ts.patch",
@@ -158,7 +172,10 @@
       "class": "upstream-candidate",
       "target": "open-sse/utils/error.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6545,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/public__openapi.yaml.patch",
@@ -222,7 +239,10 @@
       "class": "upstream-candidate",
       "target": "src/app/api/monitoring/health/route.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6553,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/src__app__api__playground__presets__route.ts.patch",
@@ -230,7 +250,10 @@
       "class": "upstream-candidate",
       "target": "src/app/api/playground/presets/route.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6554,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/src__app__api__v1__models__catalog.ts.patch",
@@ -238,7 +261,10 @@
       "class": "upstream-candidate",
       "target": "src/app/api/v1/models/catalog.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6544,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/src__app__docs__lib__openapi.generated.ts.patch",
@@ -254,7 +280,10 @@
       "class": "upstream-candidate",
       "target": "src/lib/cloudAgent/api.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6543,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/src__lib__cloudSync.ts.patch",
@@ -286,7 +315,10 @@
       "class": "upstream-candidate",
       "target": "src/lib/providers/validation/headers.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6542,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/src__mitm__inspector__agentBridgeHook.ts.patch",
@@ -294,7 +326,10 @@
       "class": "upstream-candidate",
       "target": "src/mitm/inspector/agentBridgeHook.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6451,
+        "state": "MERGED"
+      }
     },
     {
       "file": "patches/src__mitm__sanitizeHeaders.ts.patch",
@@ -302,7 +337,10 @@
       "class": "upstream-candidate",
       "target": "src/mitm/sanitizeHeaders.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6451,
+        "state": "MERGED"
+      }
     },
     {
       "file": "patches/src__server__authz__routeGuard.ts.patch",
@@ -310,7 +348,10 @@
       "class": "upstream-candidate",
       "target": "src/server/authz/routeGuard.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6541,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/src__shared__network__safeOutboundFetch.ts.patch",
@@ -390,7 +431,10 @@
       "class": "upstream-candidate",
       "target": "src/app/api/v1/models/catalogCache.ts",
       "conflictRisk": "none",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 6544,
+        "state": "OPEN"
+      }
     },
     {
       "file": "new/tests/unit/authz/__stub_apiKeys.mjs",

@@ -11,6 +11,12 @@ const legacyPath = path.join(NEXA, ".work", "old-classes.json");
 const legacy = fs.existsSync(legacyPath) ? JSON.parse(fs.readFileSync(legacyPath, "utf8")) : {};
 const classify = (file) => legacy[file]?.class || "needs-review";
 
+// upstream-PR pipeline map (target file -> {pr, state}); drives the traceable self-cleaning.
+const prPath = path.join(NEXA, "upstream-prs.json");
+const prRaw = fs.existsSync(prPath) ? JSON.parse(fs.readFileSync(prPath, "utf8")) : {};
+const prMap = Object.fromEntries(Object.entries(prRaw).filter(([k]) => !k.startsWith("_")));
+const prFor = (file) => prMap[file] || null;
+
 const patches = listPatches().map((p) => {
   const target = patchTarget(p);
   return {
@@ -19,7 +25,7 @@ const patches = listPatches().map((p) => {
     class: classify(target),
     target,
     conflictRisk: "on-overlap",
-    upstreamPR: null,
+    upstreamPR: prFor(target),
   };
 });
 const news = listNewFiles().map((n) => ({
@@ -28,7 +34,7 @@ const news = listNewFiles().map((n) => ({
   class: classify(n.dest),
   target: n.dest,
   conflictRisk: "none",
-  upstreamPR: null,
+  upstreamPR: prFor(n.dest),
 }));
 const tooling = [];
 const push = (rel, cls) => {
@@ -58,6 +64,8 @@ const manifest = {
     upstreamCandidates: count((i) => i.class === "upstream-candidate"),
     nexaSpecific: count((i) => i.class === "nexa-specific"),
     needsReview: count((i) => i.class === "needs-review"),
+    pendingUpstreamPR: count((i) => i.upstreamPR && i.upstreamPR.state === "OPEN"),
+    mergedUpstreamPR: count((i) => i.upstreamPR && i.upstreamPR.state === "MERGED"),
   },
   items,
 };
@@ -68,4 +76,7 @@ console.log(
 );
 console.log(
   `    class: ${manifest.counts.upstreamCandidates} upstream-candidate · ${manifest.counts.nexaSpecific} nexa-specific · ${manifest.counts.needsReview} needs-review`
+);
+console.log(
+  `    upstream pipeline: ${manifest.counts.mergedUpstreamPR} merged (deletable next release) · ${manifest.counts.pendingUpstreamPR} pending open PR`
 );

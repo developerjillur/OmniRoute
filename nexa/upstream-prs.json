@@ -1,0 +1,17 @@
+{
+  "_comment": "Maps a customization's upstream TARGET file -> the PR to diegosouzapw/OmniRoute that would upstream it. When a PR MERGES, its fix arrives via the next upstream release; on `node nexa/update.mjs` that patch becomes redundant (apply --check flags it) and is deleted -> the overlay self-shrinks. Consumed by gen-manifest.mjs (populates each item's upstreamPR). Refresh with: gh pr list --repo diegosouzapw/OmniRoute --author developerjillur --state all --json number,state,title,files",
+  "src/mitm/sanitizeHeaders.ts": { "pr": 6451, "state": "MERGED" },
+  "src/mitm/inspector/agentBridgeHook.ts": { "pr": 6451, "state": "MERGED" },
+  "open-sse/services/errorClassifier.ts": { "pr": 6452, "state": "MERGED" },
+  "src/server/authz/routeGuard.ts": { "pr": 6541, "state": "OPEN" },
+  "src/lib/providers/validation/headers.ts": { "pr": 6542, "state": "OPEN" },
+  "src/lib/cloudAgent/api.ts": { "pr": 6543, "state": "OPEN" },
+  "src/app/api/v1/models/catalog.ts": { "pr": 6544, "state": "OPEN" },
+  "src/app/api/v1/models/catalogCache.ts": { "pr": 6544, "state": "OPEN" },
+  "open-sse/services/combo.ts": { "pr": 6545, "state": "OPEN" },
+  "open-sse/utils/error.ts": { "pr": 6545, "state": "OPEN" },
+  "src/app/api/monitoring/health/route.ts": { "pr": 6553, "state": "OPEN" },
+  "src/app/api/playground/presets/route.ts": { "pr": 6554, "state": "OPEN" },
+  "open-sse/handlers/chatCore.ts": { "pr": 6558, "state": "OPEN" },
+  "open-sse/handlers/chatCore/idempotency.ts": { "pr": 6558, "state": "OPEN" }
+}
