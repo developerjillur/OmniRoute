@@ -108,9 +108,19 @@ Proven upstream merges (living-fork era, same fixes): #6451 Set-Cookie redaction
 Prefer candidates with a pure exported function (trivially unit-testable); route handlers whose logic is
 a local function → integration tests. **Not every candidate belongs upstream** — skip ones that fight
 the maintainer's roadmap (e.g. M7 cloud-sync fail-closed, which upstream keeps fail-open until v3.9),
-are coupled to NexaConnect schema, or can't be cleanly tested. Diagnostics/logging/header patches can
-instead become **native plugins** in `nexa/plugins/` (OmniRoute's `onRequest`/`onResponse` API;
-examples in `examples/plugins/`).
+are coupled to NexaConnect schema, or can't be cleanly tested.
+
+**Plugin conversion does NOT work for our patches (rigorously verified 2026-07-07 — do not re-attempt).**
+The plugin API (`onRequest`/`onResponse`/`onError`, VM-sandboxed) fires only at the outer HTTP boundary
+and hands `onResponse` a GENERIC payload object, not the HTTP Response — so it **cannot mutate response
+headers**, **does not see streaming/SSE responses** (they finalize at the transport layer before hooks),
+has **no visibility into combo internals** (attempt order / pool state), and runs **after** the
+idempotency cache check. `onError` is fire-and-forget (can't mutate the error response). Net: our
+`earlyStreamKeepalive` (streaming headers), `combo.ts`+`error.ts` diagnostics, and idempotency-fusion
+patches are NOT-CONVERTIBLE (combo diagnostics could at best be a fire-and-forget log shadow that
+doesn't achieve the goal). Plugins also aren't synced into the standalone by `assembleStandalone.mjs`.
+**Keep these as surgical patches and shrink them via upstream PRs instead.** `nexa/plugins/` stays in the
+layout only for a hypothetical future buffered request/response-BODY use (none today).
 
 ## 8. The manifest (`nexa/manifest.json`)
 

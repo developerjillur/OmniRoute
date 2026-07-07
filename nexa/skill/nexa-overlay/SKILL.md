@@ -88,7 +88,9 @@ needed for genuine overlap. Prefer promoting the patch out of existence instead 
 Route each change to the CLEANEST layer it can occupy (never edit an upstream file in place):
 
 1. **config/env** → `nexa/config/` (values, flags). Cheapest.
-2. **native plugin** → `nexa/plugins/` (request/response-boundary behavior; OmniRoute's plugin API).
+2. **native plugin** → `nexa/plugins/` — RARELY viable: the plugin API can't set response headers, can't
+   see streaming/SSE, and can't see combo internals (verified 2026-07-07), so diagnostics/header/combo/
+   idempotency edits do NOT fit here. Only for buffered request/response-BODY observation.
 3. **PR upstream** → generic fixes go to `diegosouzapw/OmniRoute`; once merged, delete the patch.
 4. **whole-module override** → own the file (rare).
 5. **surgical patch** → `nexa/patches/` (last resort). To add: edit `<file>`, then
@@ -143,7 +145,10 @@ their real paths on apply. tsc-ratchet is down-only; an upstream error-count ris
 
 ## Phase 2 — shrink the overlay (self-cleaning, no rush)
 
-Promote patches up the ladder; each promotion deletes a patch: diagnostics/logging/header patches →
-`nexa/plugins/`; the ~46 `upstream-candidate` patches → PRs to `diegosouzapw/OmniRoute` (they are
-responsive; several already merged). `nexa/status.mjs` tracks the shrinking count. See `reference.md`
-for the plugin-conversion and upstream-PR recipes.
+Shrink via **upstream PRs** — the effective path. Each merged PR deletes a patch (the fix arrives via the
+pristine base on the next `update`). The `upstream-candidate` patches → PRs to `diegosouzapw/OmniRoute`
+(responsive; #6451 + #6452 merged, 8 open incl. #6545 combo-diagnostics). **Plugin conversion does NOT
+work** for our patch types — verified 2026-07-07: the plugin API can't set response headers, can't see
+streaming/SSE, can't see combo internals, and runs after the idempotency check, so
+earlyStreamKeepalive / combo+error diagnostics / idempotency-fusion are NOT-CONVERTIBLE. Keep them as
+surgical patches. `nexa/status.mjs` tracks the shrinking count; see `reference.md` §7.

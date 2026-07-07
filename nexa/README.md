@@ -21,7 +21,7 @@ patch that no longer applies after upstream rewrites that exact region — repor
 | `patches/`         | surgical unified diffs vs pristine upstream (one per file), applied with `git apply --3way`   |
 | `new/`             | net-new files, mirrored to their real repo paths; copied into place at build                  |
 | `config/`          | env / `next.config` params (Phase-2 promotion target)                                         |
-| `plugins/`         | OmniRoute-native plugins (Phase-2 promotion target for request/response-boundary edits)       |
+| `plugins/`         | OmniRoute-native plugins — rarely usable (API can't set headers/see streaming/combo); most stay patches |
 | `skill/`, `agent/` | the `nexa-overlay` skill + `nexa-overlay-maintainer` agent (installed to `.claude/` by setup) |
 | `lib/overlay.mjs`  | the engine (inventory, guard, apply/restore, patch-health)                                    |
 | `manifest.json`    | registry of every item (layer, class, upstream target, PR status)                             |
