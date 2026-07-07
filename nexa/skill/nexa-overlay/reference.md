@@ -43,6 +43,22 @@ customization is in `nexa/`.
 - **Upstream PRs still work** — `gh pr create --repo diegosouzapw/OmniRoute …` is unaffected by Actions being off; that is how Phase-2 shrink happens.
 - **To re-enable** (only if you ever add a workflow — the overlay needs none): `gh api -X PUT repos/developerjillur/OmniRoute/actions/permissions -F enabled=true -f allowed_actions=all`.
 
+## 2c. Fork branches on GitHub (origin = `developerjillur/OmniRoute`) + the safety anchor
+
+- **`nexalance`** — production (pristine base + `nexa/`); the deployed branch. Keep pushed + in sync.
+- **`upstream-main`** — pristine mirror (ff'd to the latest release tag); pushed for reference.
+- **`pre-child-theme-migration`** — **ROLLBACK ANCHOR** (the pre-overlay `nexalance`). SAFETY — do NOT
+  delete. Pushed to origin so the rollback survives even if the local machine dies. Restore the whole
+  pre-migration state with `git reset --hard pre-child-theme-migration` (fast rollback: also
+  `.build/next/standalone.bak` + the `nexa-prelease-*` tags).
+- **`main`** — stale v3.8.44 base (pre-overlay); left as-is, deliberately NOT the default branch.
+- **`upstream-pr/*`** (9) — heads of our PRs to `diegosouzapw/OmniRoute`; keep each until its PR closes.
+- **Safe-to-delete (stale) — deferred to the owner** (deletion is destructive, so never automatic):
+  - `claude/omniroute-security-scan-i03n81` — leftover automated-scan branch.
+  - `upstream-pr/mitm-set-cookie-redaction` + `upstream-pr/antigravity-403-recoverable` — PRs
+    #6451/#6452 are MERGED, so these heads are stale.
+  - Delete only when the owner says so: `git push origin --delete <branch>`.
+
 ## 3. The engine (`nexa/lib/overlay.mjs`)
 
 Dependency-free Node ESM. Key functions: `checkPristine`/`assertPristine` (guard), `checkPatches`
