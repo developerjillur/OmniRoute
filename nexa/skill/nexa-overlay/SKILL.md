@@ -32,6 +32,9 @@ promotion, post-mortems): `reference.md` in this skill dir.
   smoked **out-of-band first**.
 - **`npm run dev` is BANNED** (15–25 s route compiles, ~1 GB OOM). Deploy = the production standalone
   via `nexa/build.mjs` + launchd.
+- **Commit overlay changes with `git commit --no-verify`.** The husky pre-commit hook (lint-staged)
+  runs prettier/eslint on staged files — including the pristine upstream files — and reformats them,
+  silently breaking the byte-pristine base. `--no-verify` skips it. The guard catches it if you forget.
 
 ## Git structure
 
