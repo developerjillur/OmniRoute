@@ -82,6 +82,7 @@ Goal: move a generic fix from our maintenance set into upstream so it can never 
 - **#6542** — `fix(security): SSRF-guard provider validation probes`. `src/lib/providers/validation/headers.ts` + `tests/unit/provider-validation-ssrf-guard.test.ts`.
 - **#6543** — `fix(security): fail-closed CORS for cloud-agent management routes` (was `origin||"*"` + `Allow-Credentials:true` = CSRF hole). `src/lib/cloudAgent/api.ts` + `tests/unit/cloud-agent-cors-failclosed.test.ts`.
 - **#6544** — `perf(models): request-coalescing cache for /v1/models` (2s TTL, per-API-key key). `src/app/api/v1/models/{catalogCache.ts(new),catalog.ts}` + `tests/unit/catalog-coalescing-cache.test.ts`.
+- **#6545** — `feat(combo): sanitized diagnostic trace on auto-combo terminal failure`. `open-sse/utils/error.ts` (additive infra: `sanitizeComboDiagnostics`+`errorResponseWithComboDiagnostics`) + `open-sse/services/combo.ts` (wiring) + `tests/unit/combo-diagnostics-trace.test.ts` (headers/body + whitelist + secret-containment). The existing fork test covered the _pure_ error.ts core — a good sign the feature was PR-able even though the combo.ts wiring is integration-level.
 
 Prefer candidates with a **pure exported function** (`sanitizeHeaders`, `classifyProviderError`, `isLocalOnlyPath`, `getCloudAgentCorsHeaders`, `getCoalescedCatalog`) — trivially unit-testable. Route handlers whose auth logic is a _local_ (unexported) function (e.g. presets `checkAuth`) need multi-module mocking; skip unless a clean test is writable.
 
