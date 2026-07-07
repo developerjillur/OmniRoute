@@ -74,10 +74,14 @@ Result: fork = v3.8.45 + all customizations, validated, deployed, `nexa:status` 
 
 ## 8. Upstream contribution (shrink-the-fork) — worked example
 
-Goal: move a generic fix from our maintenance set into upstream so it can never conflict again. Cut each PR from **pristine `upstream-main`**, not `nexalance` (which carries our other changes). Proven 2026-07-07 with two PRs to `diegosouzapw/OmniRoute`:
+Goal: move a generic fix from our maintenance set into upstream so it can never conflict again. Cut each PR from **pristine `upstream-main`**, not `nexalance` (which carries our other changes). Proven 2026-07-07 with 4 PRs to `diegosouzapw/OmniRoute` (`diegosouzapw` is **highly responsive — merged the first 2 within minutes**):
 
-- **#6451** — `fix(mitm): redact Set-Cookie in sanitizeHeaders` (security). Files: `src/mitm/sanitizeHeaders.ts` + `src/mitm/inspector/agentBridgeHook.ts` + a new focused test `tests/unit/mitm-sanitize-headers.test.ts`.
-- **#6452** — `fix(providers): treat recoverable Antigravity/Cloud-Code 403s as project errors` (reliability). Files: `open-sse/services/errorClassifier.ts` + `tests/unit/errorclassifier-antigravity-403.test.ts` (incl. a control proving real bans still classify as `ACCOUNT_DEACTIVATED`).
+- **#6451 MERGED** — `fix(mitm): redact Set-Cookie in sanitizeHeaders` (security). `src/mitm/sanitizeHeaders.ts` + `src/mitm/inspector/agentBridgeHook.ts` + `tests/unit/mitm-sanitize-headers.test.ts`.
+- **#6452 MERGED** — `fix(providers): recoverable Antigravity/Cloud-Code 403s` (reliability). `open-sse/services/errorClassifier.ts` + `tests/unit/errorclassifier-antigravity-403.test.ts` (control: real bans still `ACCOUNT_DEACTIVATED`).
+- **#6541** — `fix(security): loopback-gate /api/middleware/*` (vm.Script RCE parity with /api/plugins). 1-line `routeGuard.ts` add + `tests/unit/route-guard-middleware-local-only.test.ts`.
+- **#6542** — `fix(security): SSRF-guard provider validation probes`. `src/lib/providers/validation/headers.ts` + `tests/unit/provider-validation-ssrf-guard.test.ts`.
+
+**Not every `upstream-candidate` belongs upstream — read the maintainer's intent first.** `M7 cloud-sync fail-closed` was deliberately NOT PR'd: the upstream code comment says "the enforce-by-default switch will flip in v3.9", i.e. they keep fail-open on purpose until then, so flipping it now contradicts their roadmap. Skip candidates that fight the maintainer's stated plan, are coupled to NexaConnect schema/config, or can't be cleanly tested; they stay in our fork.
 
 Exact recipe (per PR):
 
