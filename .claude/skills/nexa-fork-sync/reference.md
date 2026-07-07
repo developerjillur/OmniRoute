@@ -80,6 +80,10 @@ Goal: move a generic fix from our maintenance set into upstream so it can never 
 - **#6452 MERGED** — `fix(providers): recoverable Antigravity/Cloud-Code 403s` (reliability). `open-sse/services/errorClassifier.ts` + `tests/unit/errorclassifier-antigravity-403.test.ts` (control: real bans still `ACCOUNT_DEACTIVATED`).
 - **#6541** — `fix(security): loopback-gate /api/middleware/*` (vm.Script RCE parity with /api/plugins). 1-line `routeGuard.ts` add + `tests/unit/route-guard-middleware-local-only.test.ts`.
 - **#6542** — `fix(security): SSRF-guard provider validation probes`. `src/lib/providers/validation/headers.ts` + `tests/unit/provider-validation-ssrf-guard.test.ts`.
+- **#6543** — `fix(security): fail-closed CORS for cloud-agent management routes` (was `origin||"*"` + `Allow-Credentials:true` = CSRF hole). `src/lib/cloudAgent/api.ts` + `tests/unit/cloud-agent-cors-failclosed.test.ts`.
+- **#6544** — `perf(models): request-coalescing cache for /v1/models` (2s TTL, per-API-key key). `src/app/api/v1/models/{catalogCache.ts(new),catalog.ts}` + `tests/unit/catalog-coalescing-cache.test.ts`.
+
+Prefer candidates with a **pure exported function** (`sanitizeHeaders`, `classifyProviderError`, `isLocalOnlyPath`, `getCloudAgentCorsHeaders`, `getCoalescedCatalog`) — trivially unit-testable. Route handlers whose auth logic is a _local_ (unexported) function (e.g. presets `checkAuth`) need multi-module mocking; skip unless a clean test is writable.
 
 **Not every `upstream-candidate` belongs upstream — read the maintainer's intent first.** `M7 cloud-sync fail-closed` was deliberately NOT PR'd: the upstream code comment says "the enforce-by-default switch will flip in v3.9", i.e. they keep fail-open on purpose until then, so flipping it now contradicts their roadmap. Skip candidates that fight the maintainer's stated plan, are coupled to NexaConnect schema/config, or can't be cleanly tested; they stay in our fork.
 
@@ -99,7 +103,7 @@ gh pr create --repo diegosouzapw/OmniRoute --base main --head developerjillur:up
 git worktree remove --force /tmp/omni-pr
 ```
 
-Gotchas learned: (a) `git checkout <ref> -- <paths>` **stages** the files, so use `diff --cached` to inspect. (b) Put the test in `tests/unit/**` (that's the `test:unit` glob); `open-sse/**/__tests__` is run by a different script. (c) `maskSecret` is format-aware (Bearer/`sk-`/≥40-char) — arbitrary cookie values need **full** redaction, which is exactly why #6451 exists. (d) Keep each PR one concern; upstream reviews small self-contained diffs fastest.
+Gotchas learned: (a) `git checkout <ref> -- <paths>` **stages** the files, so use `diff --cached` to inspect. (b) Put the test in `tests/unit/**` (that's the `test:unit` glob); `open-sse/**/__tests__` is run by a different script. (c) `maskSecret` is format-aware (Bearer/`sk-`/≥40-char) — arbitrary cookie values need **full** redaction, which is exactly why #6451 exists. (d) Keep each PR one concern; upstream reviews small self-contained diffs fastest. (e) **Testing a keyed cache: vary the axis the KEY uses, not one it ignores.** The catalog cache keys on API-key + prefix/version (not arbitrary query params), so a "two different requests" test that only changed the URL got a false cache HIT (build ran 0 times) — namespace test cases by a _different API key_. (f) CORS/allowlist functions read `process.env` (`CORS_ALLOWED_ORIGINS`, `CORS_ALLOW_ALL`) at call time — set/restore them in `beforeEach`/`afterEach` like `tests/unit/cors/origins.test.ts`.
 
 ## 9. Fork CI configuration (already applied — don't redo)
 
