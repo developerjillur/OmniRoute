@@ -41,8 +41,11 @@ promotion, post-mortems): `reference.md` in this skill dir.
 - Remotes: `origin` → `git@github.com:developerjillur/OmniRoute.git` (SSH, push here) · `upstream` →
   `https://github.com/diegosouzapw/OmniRoute.git` (never push).
 - Branches: `nexalance` = production (pristine base + `nexa/`) · `upstream-main` = pristine mirror
-  (only ff'd from `upstream/main`, never hand-edited) · `pre-child-theme-migration` = pre-overlay
-  rollback anchor.
+  (only ff'd from a release tag / `upstream/main`, never hand-edited) · `pre-child-theme-migration` =
+  pre-overlay rollback anchor.
+- **No CI:** GitHub Actions is **DISABLED** on the fork (default branch `nexalance`). The child-theme
+  model needs no workflows — validation is 100% local (`nexa/build.mjs` + gate + smoke). Upstream PRs
+  via `gh` still work. Details + re-enable command: `reference.md` §2b.
 
 ## Workflow (run from repo root)
 

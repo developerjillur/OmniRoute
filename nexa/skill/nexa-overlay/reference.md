@@ -35,6 +35,14 @@ into the overlay:
 Result: `git diff upstream-main..nexalance -- . ':(exclude)nexa/'` is EMPTY — base is pristine, all
 customization is in `nexa/`.
 
+## 2b. Fork GitHub settings (cleaned up 2026-07-07 — the child-theme model needs NO CI)
+
+- **GitHub Actions is DISABLED** on `developerjillur/OmniRoute` (`gh api repos/developerjillur/OmniRoute/actions/permissions` → `{"enabled":false}`). No workflows run — neither the removed `nexa-upstream-sync.yml` nor upstream's ~24 inherited workflows (which would otherwise waste CI minutes on our fork). **Validation is 100% local** (`node nexa/build.mjs` + the gate + out-of-band smoke). Do NOT expect any CI.
+- **Workflow token perms revoked** to safe defaults (`default_workflow_permissions:read`, `can_approve_pull_request_reviews:false`) — they had been elevated only for the old auto-sync PR bot.
+- **Default branch = `nexalance`** (our production overlay branch), deliberately NOT `main` (a stale v3.8.44 base with no overlay). Keep it.
+- **Upstream PRs still work** — `gh pr create --repo diegosouzapw/OmniRoute …` is unaffected by Actions being off; that is how Phase-2 shrink happens.
+- **To re-enable** (only if you ever add a workflow — the overlay needs none): `gh api -X PUT repos/developerjillur/OmniRoute/actions/permissions -F enabled=true -f allowed_actions=all`.
+
 ## 3. The engine (`nexa/lib/overlay.mjs`)
 
 Dependency-free Node ESM. Key functions: `checkPristine`/`assertPristine` (guard), `checkPatches`

@@ -32,10 +32,13 @@ health.
 
 0. **Anchor rollback** — `git tag nexa-prelease-<stamp> nexalance`; back up the current
    `.build/next/standalone`.
-1. **Update** — `node nexa/update.mjs`: fetch upstream, ff `upstream-main`, merge into `nexalance`
-   (conflict-free by construction — our only additions are in `nexa/`). If it reports an UNEXPECTED
-   merge conflict, an upstream file was edited directly on the branch: `git merge --abort`, find it
-   with `node nexa/check/pristine-base.mjs`, move the edit into `nexa/patches/`, retry.
+1. **Update** — `node nexa/update.mjs`: fetches upstream **release tags** and, if a newer release than
+   our base exists, ff's `upstream-main` to that RELEASE TAG and merges into `nexalance` (conflict-free
+   by construction — our only additions are in `nexa/`); it no-ops if already on the latest release.
+   Tracks releases, not bleeding-edge `main` (`--main` to override). There is **no CI** — GitHub Actions
+   is disabled on the fork; all validation is local (below). If it reports an UNEXPECTED merge conflict,
+   an upstream file was edited directly on the branch: `git merge --abort`, find it with
+   `node nexa/check/pristine-base.mjs`, move the edit into `nexa/patches/`, retry.
 2. **Re-cut failing patches** — for each `nexa/patches/<slug>.patch → <file>` the update flags: read
    the patch for intent, apply it by hand onto the new pristine `<file>`, then
    `git diff upstream-main -- <file> > nexa/patches/<slug>.patch && git checkout upstream-main -- <file>`.
