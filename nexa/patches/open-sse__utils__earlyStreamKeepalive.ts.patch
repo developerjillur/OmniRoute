@@ -5,23 +5,23 @@ index c70180f..16b5783 100644
 @@ -216,13 +216,25 @@ export async function withEarlyStreamKeepalive(
      },
    });
- 
-+  // Preserve the SOURCE response's headers (x-omniroute-* metadata, session/correlation
-+  // ids, route-class, etc.) on the keepalive-wrapped stream. This path was silently
-+  // dropping every observability header that the verbatim fast-path keeps — the reason
-+  // streaming responses lacked provider/model/request-id/session-id (QA finding: streaming
-+  // telemetry). Override only the streaming transport headers; strip stale content framing.
-+  const keepaliveHeaders = new Headers(response.headers);
+
++  // Slow-path SSE head is committed HERE, before the upstream handler resolves, so the
++  // source `response` is NOT in scope yet — reading response.headers threw ReferenceError
++  // (→ 500 on every slow streaming request, e.g. tool-call turns). Build fresh transport
++  // headers; the verbatim fast-path return above already preserves all source x-omniroute-*
++  // observability headers, so streaming telemetry is retained on the common (fast) path.
++  const keepaliveHeaders = new Headers();
 +  keepaliveHeaders.set("Content-Type", "text/event-stream; charset=utf-8");
 +  keepaliveHeaders.set("Cache-Control", "no-cache, no-transform");
 +  keepaliveHeaders.set("Connection", "keep-alive");
 +  keepaliveHeaders.delete("content-length");
 +  keepaliveHeaders.delete("content-encoding");
 +  keepaliveHeaders.delete("transfer-encoding");
-+  // MERGE (v3.8.45): apply upstream's `extraHeaders` option ON TOP of our
-+  // preserved source headers. keepaliveHeaders already carries the source
-+  // response's x-omniroute-* metadata (our streaming-telemetry fix) — upstream's
-+  // fresh-headers approach would have dropped it. Both behaviours retained.
++  // MERGE (v3.8.45): apply the caller's `extraHeaders` (e.g. X-Correlation-Id) ON TOP
++  // of the fresh transport headers. Correlation/telemetry ids the caller knows upfront
++  // ride along here; deeper source-response metadata is only available on the fast path,
++  // which returns the upstream response verbatim (all headers intact).
 +  for (const [key, value] of Object.entries(extraHeaders)) keepaliveHeaders.set(key, value);
    return new Response(stream, {
      status: 200,
