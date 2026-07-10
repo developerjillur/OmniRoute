@@ -7,13 +7,13 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 55,
-    "patches": 39,
-    "new": 14,
+    "total": 57,
+    "patches": 40,
+    "new": 15,
     "tooling": 2,
     "upstreamCandidates": 46,
     "nexaSpecific": 6,
-    "needsReview": 3,
+    "needsReview": 5,
     "pendingUpstreamPR": 11,
     "mergedUpstreamPR": 3
   },
@@ -256,6 +256,14 @@
       }
     },
     {
+      "file": "patches/src__app__api__v1__chat__completions__route.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/app/api/v1/chat/completions/route.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/src__app__api__v1__models__catalog.ts.patch",
       "layer": "patch",
       "class": "upstream-candidate",
@@ -435,6 +443,14 @@
         "pr": 6544,
         "state": "OPEN"
       }
+    },
+    {
+      "file": "new/src/lib/nexa/reasoningElicitation.ts",
+      "layer": "new",
+      "class": "needs-review",
+      "target": "src/lib/nexa/reasoningElicitation.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
     },
     {
       "file": "new/tests/unit/authz/__stub_apiKeys.mjs",
