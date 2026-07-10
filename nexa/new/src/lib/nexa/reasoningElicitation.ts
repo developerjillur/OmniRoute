@@ -40,12 +40,17 @@ export function isClaudeModel(model: unknown): boolean {
   return typeof model === "string" && /claude/i.test(model);
 }
 
-/** Prepend the reasoning-elicitation system directive (Claude models only). */
-export function injectReasoningElicitation(model: unknown, body: unknown): void {
+/**
+ * Prepend the reasoning-elicitation system directive. Applied to EVERY model
+ * when the caller opts in — Claude's thinking is redacted, and some providers
+ * (e.g. GPT-5.x/Codex) emit their native reasoning summary only intermittently;
+ * the in-band tag is the one reliable, uniform source across the panel. The
+ * header gate keeps this off every default (coding-agent) request.
+ */
+export function injectReasoningElicitation(_model: unknown, body: unknown): void {
   if (!body || typeof body !== "object") return;
-  const b = body as { messages?: unknown; model?: unknown };
+  const b = body as { messages?: unknown };
   if (!Array.isArray(b.messages)) return;
-  if (!isClaudeModel(model ?? b.model)) return;
   b.messages.unshift({ role: "system", content: ELICIT_SYSTEM });
 }
 
@@ -128,6 +133,15 @@ function rewriteChunk(json: Record<string, unknown>, splitter: TagSplitter): str
   const delta = (choice?.delta ?? null) as Record<string, unknown> | null;
   const content = delta?.content;
   if (typeof content !== "string" || content.length === 0) {
+    // In elicit mode the <omni:reasoning> tag is the single reasoning source —
+    // drop the provider's own (intermittent) reasoning_content so the panel's
+    // thinking isn't duplicated. Preserve every other field (role, usage, …).
+    if (delta && typeof delta.reasoning_content === "string") {
+      const rest: Record<string, unknown> = { ...delta };
+      delete rest.reasoning_content;
+      if (Object.keys(rest).length === 0) return [];
+      return ["data: " + JSON.stringify(cloneChunk(json, rest))];
+    }
     return ["data: " + JSON.stringify(json)];
   }
   const segs = splitter.push(content);
@@ -282,7 +296,9 @@ export function reassembleAndSplit(text: string): unknown {
     if (j.usage) usage = j.usage;
   }
   const split = tagSplit(content);
-  const finalReasoning = (reasoning + split.reasoning).trim();
+  // Prefer the elicited <omni:reasoning> tag; fall back to the provider's own
+  // reasoning_content only when the model emitted no tag (avoids duplication).
+  const finalReasoning = split.reasoning.trim() || reasoning.trim();
   return {
     id: id || "chatcmpl-nexa",
     object: "chat.completion",
