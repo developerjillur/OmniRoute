@@ -1,8 +1,8 @@
 {
   "_comment": "NexaLance OmniRoute child-theme overlay registry. layer: patch=surgical diff onto pristine upstream; new=net-new file copied in at build; tooling=overlay machinery. class: upstream-candidate=generic fix worth PRing to diegosouzapw/OmniRoute (Phase-2 shrinker); nexa-specific=stays in the overlay; needs-review=triage. Base stays byte-for-byte pristine; regenerate with `node nexa/gen-manifest.mjs`.",
   "upstreamBase": {
-    "sha": "3ddcee63",
-    "version": "3.8.45"
+    "sha": "92715c8f2",
+    "version": "3.8.46"
   },
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",

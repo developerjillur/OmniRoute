@@ -1,11 +1,11 @@
 diff --git a/src/app/api/v1/chat/completions/route.ts b/src/app/api/v1/chat/completions/route.ts
-index 0bc62035..a964c246 100644
+index bddf765d0..6e9a2cf80 100644
 --- a/src/app/api/v1/chat/completions/route.ts
 +++ b/src/app/api/v1/chat/completions/route.ts
-@@ -8,6 +8,11 @@ import { acceptHeaderForcesStream } from "@omniroute/open-sse/utils/aiSdkCompat.
- import { withEarlyStreamKeepalive } from "@omniroute/open-sse/utils/earlyStreamKeepalive";
- import { resolveKeepaliveThreshold } from "@omniroute/open-sse/utils/keepaliveThreshold";
- import { checkChatAdmission } from "@/shared/middleware/chatBodyAdmission";
+@@ -12,6 +12,11 @@ import {
+   readCompressionRequestHeader,
+   withCompressionHeaderEcho,
+ } from "@/shared/utils/compressionHeaderEcho";
 +import {
 +  injectReasoningElicitation,
 +  reasoningElicitationRequested,
@@ -14,14 +14,14 @@ index 0bc62035..a964c246 100644
  
  let initPromise = null;
  
-@@ -93,6 +98,15 @@ export async function POST(request) {
+@@ -114,6 +119,15 @@ export async function POST(request) {
    // The parsed body is passed through UNTOUCHED — the actual stream/JSON framing
    // stays decided by chatCore/resolveStreamFlag (legacy streaming default and the
    // per-key `streamDefaultMode: "json"` opt-in are preserved).
-+  // nexa overlay: opt-in visible-reasoning elicitation for Claude models whose
-+  // extended thinking is redacted by the OAuth tier. Header-gated + Claude-only,
-+  // so default (coding-agent) traffic is byte-for-byte untouched. The request
-+  // gets a <omni:reasoning> directive here; the response is un-wrapped below.
++  // nexa overlay: opt-in visible-reasoning elicitation for Claude/Codex models whose
++  // reasoning is redacted/hidden upstream. Header-gated, so default (coding-agent)
++  // traffic is byte-for-byte untouched. The request gets a <omni:reasoning> directive
++  // here; the response is un-wrapped below (composed under the compression echo).
 +  const elicitReasoning = reasoningElicitationRequested(request);
 +  if (elicitReasoning && isRecord(parsedBody)) {
 +    injectReasoningElicitation(parsedBody.model, parsedBody);
@@ -30,20 +30,24 @@ index 0bc62035..a964c246 100644
    const parsedBodyIsRecord = isRecord(parsedBody);
    const acceptHeader = request.headers.get("accept") || "";
    const acceptForcesStream =
-@@ -101,12 +115,14 @@ export async function POST(request) {
- 
-   if (wantsStreaming) {
-     const reqId = generateRequestId();
--    return await withEarlyStreamKeepalive(handleChat(request, null, parsedBody, reqId), {
-+    const streamed = await withEarlyStreamKeepalive(handleChat(request, null, parsedBody, reqId), {
-       signal: request.signal,
-       thresholdMs: resolveKeepaliveThreshold(parsedBody?.model),
-       extraHeaders: { "X-Correlation-Id": reqId },
-     });
-+    return elicitReasoning ? await wrapReasoningResponse(request, streamed, true) : streamed;
+@@ -135,11 +149,15 @@ export async function POST(request) {
+         extraHeaders: { "X-Correlation-Id": reqId },
+       }
+     );
+-    return withCompressionHeaderEcho(streamedResponse, compressionRequestHeader);
++    const streamedFinal = elicitReasoning
++      ? await wrapReasoningResponse(request, streamedResponse, true)
++      : streamedResponse;
++    return withCompressionHeaderEcho(streamedFinal, compressionRequestHeader);
    }
  
--  return await handleChat(request, null, parsedBody);
+-  return withCompressionHeaderEcho(
+-    await handleChat(request, null, parsedBody),
+-    compressionRequestHeader
+-  );
 +  const completion = await handleChat(request, null, parsedBody);
-+  return elicitReasoning ? await wrapReasoningResponse(request, completion, false) : completion;
++  const completionFinal = elicitReasoning
++    ? await wrapReasoningResponse(request, completion, false)
++    : completion;
++  return withCompressionHeaderEcho(completionFinal, compressionRequestHeader);
  }
