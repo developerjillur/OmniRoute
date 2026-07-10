@@ -1,5 +1,5 @@
 diff --git a/src/app/api/v1/chat/completions/route.ts b/src/app/api/v1/chat/completions/route.ts
-index 0bc62035..4a176d85 100644
+index 0bc62035..a964c246 100644
 --- a/src/app/api/v1/chat/completions/route.ts
 +++ b/src/app/api/v1/chat/completions/route.ts
 @@ -8,6 +8,11 @@ import { acceptHeaderForcesStream } from "@omniroute/open-sse/utils/aiSdkCompat.
@@ -40,10 +40,10 @@ index 0bc62035..4a176d85 100644
        thresholdMs: resolveKeepaliveThreshold(parsedBody?.model),
        extraHeaders: { "X-Correlation-Id": reqId },
      });
-+    return elicitReasoning ? await wrapReasoningResponse(request, streamed) : streamed;
++    return elicitReasoning ? await wrapReasoningResponse(request, streamed, true) : streamed;
    }
  
 -  return await handleChat(request, null, parsedBody);
 +  const completion = await handleChat(request, null, parsedBody);
-+  return elicitReasoning ? await wrapReasoningResponse(request, completion) : completion;
++  return elicitReasoning ? await wrapReasoningResponse(request, completion, false) : completion;
  }

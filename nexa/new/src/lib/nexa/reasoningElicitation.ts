@@ -210,6 +210,15 @@ export function wrapReasoningSse(body: ReadableStream<Uint8Array>): ReadableStre
   return body.pipeThrough(transform);
 }
 
+function tagSplit(content: string): { content: string; reasoning: string } {
+  const splitter = new TagSplitter();
+  const segs = [...splitter.push(content), ...splitter.flush()];
+  let reasoning = "";
+  let body = "";
+  for (const s of segs) (s.kind === "reasoning" ? (reasoning += s.text) : (body += s.text));
+  return { content: body, reasoning };
+}
+
 /** Non-streaming JSON: split message.content into content + reasoning_content. */
 export function splitJsonReasoning(json: unknown): unknown {
   if (!json || typeof json !== "object") return json;
@@ -220,45 +229,103 @@ export function splitJsonReasoning(json: unknown): unknown {
   const message = first?.message as Record<string, unknown> | undefined;
   const content = message?.content;
   if (typeof content !== "string" || !content.includes(OPEN)) return json;
-  const splitter = new TagSplitter();
-  const segs = [...splitter.push(content), ...splitter.flush()];
-  let reasoning = "";
-  let body = "";
-  for (const s of segs) (s.kind === "reasoning" ? (reasoning += s.text) : (body += s.text));
+  const { content: body, reasoning } = tagSplit(content);
   const newMessage = { ...message, content: body.trim() } as Record<string, unknown>;
   if (reasoning.trim()) newMessage.reasoning_content = reasoning.trim();
   return { ...j, choices: [{ ...first, message: newMessage }, ...choices.slice(1)] };
 }
 
-/** Wrap a handleChat Response, applying the split when the caller opted in. */
+/**
+ * Non-streaming: reassemble the body (a single JSON completion OR a streamed-200
+ * SSE body — OmniRoute may return either even for stream:false) into ONE clean
+ * OpenAI JSON completion with the <omni:reasoning> span moved to
+ * reasoning_content. Deterministic — the caller (gateway) always gets JSON.
+ */
+export function reassembleAndSplit(text: string): unknown {
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith("{")) {
+    try {
+      return splitJsonReasoning(JSON.parse(trimmed));
+    } catch {
+      /* fall through to SSE reassembly */
+    }
+  }
+  let content = "";
+  let reasoning = "";
+  let id = "";
+  let model = "";
+  let finish: unknown = null;
+  let usage: unknown;
+  for (const line of text.split(/\r?\n/)) {
+    const s = line.trim();
+    if (!s.startsWith("data:")) continue;
+    const p = (s.startsWith("data: ") ? s.slice(6) : s.slice(5)).trim();
+    if (!p || p === "[DONE]") continue;
+    let j: Record<string, unknown>;
+    try {
+      j = JSON.parse(p);
+    } catch {
+      continue;
+    }
+    if (typeof j.id === "string") id = j.id;
+    if (typeof j.model === "string") model = j.model;
+    const ch = (Array.isArray(j.choices) ? j.choices[0] : null) as
+      | Record<string, unknown>
+      | null;
+    const d = (ch?.delta ?? null) as Record<string, unknown> | null;
+    const m = (ch?.message ?? null) as Record<string, unknown> | null;
+    if (typeof d?.content === "string") content += d.content;
+    if (typeof d?.reasoning_content === "string") reasoning += d.reasoning_content;
+    if (typeof m?.content === "string") content += m.content;
+    if (typeof m?.reasoning_content === "string") reasoning += m.reasoning_content;
+    if (ch?.finish_reason) finish = ch.finish_reason;
+    if (j.usage) usage = j.usage;
+  }
+  const split = tagSplit(content);
+  const finalReasoning = (reasoning + split.reasoning).trim();
+  return {
+    id: id || "chatcmpl-nexa",
+    object: "chat.completion",
+    model,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content: split.content.trim(),
+          ...(finalReasoning ? { reasoning_content: finalReasoning } : {}),
+        },
+        finish_reason: finish || "stop",
+      },
+    ],
+    ...(usage ? { usage } : {}),
+  };
+}
+
+/**
+ * Wrap a handleChat Response, applying the split when the caller opted in.
+ * `streaming` = the request asked for live SSE (stream:true) → transform the
+ * stream in place. Otherwise buffer + reassemble to a single clean JSON body
+ * (robust to OmniRoute answering a stream:false request with an SSE body).
+ */
 export async function wrapReasoningResponse(
   request: Request,
-  response: Response
+  response: Response,
+  streaming: boolean
 ): Promise<Response> {
   if (!reasoningElicitationRequested(request) || !response.body) return response;
   const ct = response.headers.get("content-type") ?? "";
-  if (ct.includes("text/event-stream") || ct.includes("stream")) {
+  if (streaming && ct.includes("text/event-stream")) {
     return new Response(wrapReasoningSse(response.body), {
       status: response.status,
       statusText: response.statusText,
       headers: response.headers,
     });
   }
-  if (ct.includes("application/json")) {
-    const text = await response.text();
-    let json: unknown;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      return new Response(text, {
-        status: response.status,
-        headers: response.headers,
-      });
-    }
-    return new Response(JSON.stringify(splitJsonReasoning(json)), {
-      status: response.status,
-      headers: response.headers,
-    });
-  }
-  return response;
+  const text = await response.text();
+  const json = reassembleAndSplit(text);
+  const headers = new Headers(response.headers);
+  headers.set("content-type", "application/json");
+  headers.delete("content-length");
+  return new Response(JSON.stringify(json), { status: response.status, headers });
 }
