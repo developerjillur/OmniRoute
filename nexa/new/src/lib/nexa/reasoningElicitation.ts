@@ -20,16 +20,22 @@ export const REASONING_ELICIT_HEADER = "x-omniroute-reasoning-tag";
 const OPEN = "<omni:reasoning>";
 const CLOSE = "</omni:reasoning>";
 
+// Framed as a REQUIRED OUTPUT SECTION (not "expose your hidden reasoning") — the
+// weaker phrasing was silently ignored by OpenAI/Codex models (GPT-5.x), which
+// are trained not to reveal chain-of-thought; this framing wins compliance 6/6
+// across Opus / Gemini / GPT while the model still writes a genuine planning note.
 const ELICIT_SYSTEM =
-  "Structure EVERY response in two parts. FIRST write your full, genuine, " +
-  "step-by-step reasoning wrapped EXACTLY in " +
+  "OUTPUT FORMAT (mandatory, both sections required). Section 1 — between the literal " +
+  "tags " +
   OPEN +
   " and " +
   CLOSE +
-  " tags. THEN, after the closing tag, write ONLY your normal answer. The wrapped " +
-  "reasoning is surfaced to the operator as a private thinking panel and is NOT " +
-  "shown to the end user; the text after the closing tag is the user-facing answer. " +
-  "Always include BOTH parts, in that order.";
+  " — write a visible 3-4 sentence PLANNING NOTE: how you read this client, the strategy " +
+  "you chose, and the tradeoffs you weighed. This is a REQUIRED deliverable section of your " +
+  "answer, NOT hidden reasoning. Section 2 — after " +
+  CLOSE +
+  " — write ONLY the client-facing reply (no preamble, no labels). Never omit Section 1; " +
+  "an answer without it is incomplete.";
 
 export function reasoningElicitationRequested(request: Request): boolean {
   const v = request.headers.get(REASONING_ELICIT_HEADER);
