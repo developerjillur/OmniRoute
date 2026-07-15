@@ -1,0 +1,27 @@
+diff --git a/src/app/(dashboard)/dashboard/cli-code/components/HermesAgentToolCard.tsx b/src/app/(dashboard)/dashboard/cli-code/components/HermesAgentToolCard.tsx
+index c7d356ee3..8488050b7 100644
+--- a/src/app/(dashboard)/dashboard/cli-code/components/HermesAgentToolCard.tsx
++++ b/src/app/(dashboard)/dashboard/cli-code/components/HermesAgentToolCard.tsx
+@@ -21,6 +21,22 @@ const HERMES_ROLES: Role[] = [
+   { id: "web_extract", label: "Web Extract", description: "Web page content extraction" },
+   { id: "skills_hub", label: "Skills Hub", description: "Skills and tool-use reasoning" },
+   { id: "approval", label: "Approval", description: "Safety and approval decisions" },
++  // nexa: MoA writing-panel slots (moa.presets.client-reply)
++  {
++    id: "moa_aggregator",
++    label: "MoA Aggregator (writer)",
++    description: "Acting writer of the MoA panel — moa.presets.client-reply",
++  },
++  {
++    id: "moa_advisor_1",
++    label: "MoA Advisor 1",
++    description: "Tool-less reference advisor 1 of the MoA panel",
++  },
++  {
++    id: "moa_advisor_2",
++    label: "MoA Advisor 2",
++    description: "Tool-less reference advisor 2 of the MoA panel",
++  },
+ ];
+ 
+ const HERMES_AGENT_ZERO_CONFIG_PROVIDERS = ["opencode"];

@@ -7,13 +7,13 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 57,
-    "patches": 40,
+    "total": 60,
+    "patches": 43,
     "new": 15,
     "tooling": 2,
     "upstreamCandidates": 46,
     "nexaSpecific": 6,
-    "needsReview": 5,
+    "needsReview": 8,
     "pendingUpstreamPR": 11,
     "mergedUpstreamPR": 3
   },
@@ -210,6 +210,14 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/src__app__(dashboard)__dashboard__cli-code__components__HermesAgentToolCard.tsx.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/app/(dashboard)/dashboard/cli-code/components/HermesAgentToolCard.tsx",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/src__app__(dashboard)__dashboard__providers__[id]__components__ProviderModalsPanel.tsx.patch",
       "layer": "patch",
       "class": "upstream-candidate",
@@ -222,6 +230,14 @@
       "layer": "patch",
       "class": "upstream-candidate",
       "target": "src/app/.well-known/agent.json/route.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__app__api__cli-tools__hermes-agent-settings__route.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/app/api/cli-tools/hermes-agent-settings/route.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },
@@ -279,6 +295,14 @@
       "layer": "patch",
       "class": "upstream-candidate",
       "target": "src/app/docs/lib/openapi.generated.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__lib__cli-helper__config-generator__hermes-agent.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/lib/cli-helper/config-generator/hermes-agent.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },

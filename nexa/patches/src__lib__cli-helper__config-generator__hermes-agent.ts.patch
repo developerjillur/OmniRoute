@@ -1,0 +1,160 @@
+diff --git a/src/lib/cli-helper/config-generator/hermes-agent.ts b/src/lib/cli-helper/config-generator/hermes-agent.ts
+index ee5d05fd2..e80cc2c7b 100644
+--- a/src/lib/cli-helper/config-generator/hermes-agent.ts
++++ b/src/lib/cli-helper/config-generator/hermes-agent.ts
+@@ -41,13 +41,42 @@ export const HERMES_AGENT_ROLES = [
+   { id: "web_extract", label: "Web Extract", description: "Web page / content extraction" },
+   { id: "skills_hub", label: "Skills Hub", description: "Skills and tool-use reasoning" },
+   { id: "approval", label: "Approval", description: "Safety and approval decisions" },
++  // nexa: MoA writing-panel slots (moa.presets.client-reply) — the aggregator is the acting
++  // writer; advisors are tool-less reference models.
++  {
++    id: "moa_aggregator",
++    label: "MoA Aggregator (writer)",
++    description: "Acting writer model of the MoA panel (moa.presets.client-reply)",
++  },
++  {
++    id: "moa_advisor_1",
++    label: "MoA Advisor 1",
++    description: "First tool-less reference advisor of the MoA panel",
++  },
++  {
++    id: "moa_advisor_2",
++    label: "MoA Advisor 2",
++    description: "Second tool-less reference advisor of the MoA panel",
++  },
+ ] as const;
+ 
+ export type HermesAgentRole = (typeof HERMES_AGENT_ROLES)[number]["id"];
+ 
++// nexa: canonical OmniRoute effort vocabulary (shared/reasoning/effortStandardization.ts).
++// Forwarded per provider family by the existing translators (Anthropic thinking,
++// Gemini thinkingConfig, xAI reasoning.effort, Responses API).
++export const HERMES_AGENT_EFFORT_VALUES = ["none", "low", "medium", "high", "xhigh"] as const;
++
++const MOA_ROLE_IDS = ["moa_aggregator", "moa_advisor_1", "moa_advisor_2"] as const;
++const MOA_PRESET_NAME = "client-reply";
++
+ export interface HermesAgentRoleSelection {
+   role: HermesAgentRole;
+   model: string;
++  // nexa: optional per-role reasoning effort. Written as extra_body.reasoning_effort on the
++  // role's auxiliary block — Hermes merges auxiliary.<task>.extra_body into every call for
++  // that task, and OmniRoute maps reasoning_effort per provider family.
++  effort?: string;
+ }
+ 
+ export interface HermesAgentConfigPayload {
+@@ -120,9 +149,34 @@ export async function generateHermesAgentConfig(
+     },
+   };
+ 
++  // nexa: helper — merge a reasoning effort into an auxiliary task's extra_body without
++  // clobbering other extra_body keys. effort "none" clears the override.
++  const setAuxEffort = (task: string, effort: string) => {
++    if (!next.auxiliary) next.auxiliary = { ...(existing.auxiliary || {}) };
++    const block: any = { ...(existing.auxiliary?.[task] || {}), ...(next.auxiliary[task] || {}) };
++    const extra: any = { ...(block.extra_body || {}) };
++    if (effort === "none") {
++      delete extra.reasoning_effort;
++    } else {
++      extra.reasoning_effort = effort;
++    }
++    if (Object.keys(extra).length > 0) block.extra_body = extra;
++    else delete block.extra_body;
++    next.auxiliary[task] = block;
++  };
++
++  const normalizeEffortValue = (value: unknown): string | undefined => {
++    if (typeof value !== "string") return undefined;
++    const lowered = value.trim().toLowerCase();
++    return (HERMES_AGENT_EFFORT_VALUES as readonly string[]).includes(lowered)
++      ? lowered
++      : undefined;
++  };
++
+   // Apply each role selection
+   for (const sel of selections) {
+     const { role, model } = sel;
++    const effort = normalizeEffortValue(sel.effort);
+ 
+     if (role === "default") {
+       next.model = {
+@@ -139,16 +193,52 @@ export async function generateHermesAgentConfig(
+         base_url: `${normalizedBase}/v1`,
+         api_key: resolvedKey,
+       };
++    } else if ((MOA_ROLE_IDS as readonly string[]).includes(role)) {
++      // nexa: MoA panel slots → moa.presets.client-reply (non-destructive merge — any field
++      // owned by the hermes overlay config fragments survives). Safe defaults only when the
++      // preset does not exist yet: reference_max_tokens 600, fanout user_turn.
++      if (!next.moa) next.moa = { ...(existing.moa || {}) };
++      const presets: any = (next.moa.presets = {
++        ...(existing.moa?.presets || {}),
++        ...(next.moa.presets || {}),
++      });
++      const prior: any = presets[MOA_PRESET_NAME] || {};
++      const preset: any = {
++        reference_max_tokens: 600,
++        fanout: "user_turn",
++        ...prior,
++      };
++      if (role === "moa_aggregator") {
++        preset.aggregator = { provider: "omniroute", model };
++        if (effort) setAuxEffort("moa_aggregator", effort);
++      } else {
++        const idx = role === "moa_advisor_1" ? 0 : 1;
++        const refs: any[] = Array.isArray(preset.reference_models)
++          ? [...preset.reference_models]
++          : [];
++        while (refs.length <= idx) refs.push({ provider: "omniroute", model: "" });
++        refs[idx] = { provider: "omniroute", model };
++        preset.reference_models = refs;
++        // NOTE: advisor effort is per-TASK in Hermes (auxiliary.moa_reference applies to
++        // BOTH advisors) — the last advisor selection wins.
++        if (effort) setAuxEffort("moa_reference", effort);
++      }
++      presets[MOA_PRESET_NAME] = preset;
++      if (!next.moa.default_preset) {
++        next.moa.default_preset = existing.moa?.default_preset || MOA_PRESET_NAME;
++      }
+     } else {
+       // auxiliary.* roles
+-      if (!next.auxiliary) next.auxiliary = {};
++      if (!next.auxiliary) next.auxiliary = { ...(existing.auxiliary || {}) };
+       next.auxiliary[role] = {
+         ...(existing.auxiliary?.[role] || {}),
++        ...(next.auxiliary[role] || {}),
+         provider: "omniroute",
+         model,
+         base_url: `${normalizedBase}/v1`,
+         api_key: resolvedKey,
+       };
++      if (effort) setAuxEffort(role, effort);
+     }
+   }
+ 
+@@ -206,5 +296,23 @@ export async function getCurrentHermesAgentRoles(): Promise<
+     }
+   }
+ 
++  // nexa: MoA panel slots read-back (moa.presets.client-reply)
++  const moaPreset = (config.moa?.presets || {})[MOA_PRESET_NAME];
++  if (moaPreset && typeof moaPreset === "object") {
++    if (moaPreset.aggregator && typeof moaPreset.aggregator === "object" && moaPreset.aggregator.model) {
++      result.moa_aggregator = {
++        model: moaPreset.aggregator.model,
++        provider: moaPreset.aggregator.provider,
++      };
++    }
++    if (Array.isArray(moaPreset.reference_models)) {
++      moaPreset.reference_models.slice(0, 2).forEach((ref: any, i: number) => {
++        if (ref && typeof ref === "object" && ref.model) {
++          result[`moa_advisor_${i + 1}`] = { model: ref.model, provider: ref.provider };
++        }
++      });
++    }
++  }
++
+   return result;
+ }
