@@ -1,0 +1,17 @@
+diff --git a/Dockerfile b/Dockerfile
+index 81df902f1..9d947c3f6 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -21,7 +21,11 @@ RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt,sharing=shared \
+ # but the container scanner flags the stale copies under
+ # /usr/local/lib/node_modules/npm/node_modules. npm is not invoked at runtime in
+ # the runner stages, so this is hygiene, not an exploitable runtime path.
+-RUN npm install -g npm@latest \
++# nexa: PIN npm instead of floating @latest — npm releases after 11.16 changed
++# `npm rebuild` to block install scripts not covered by allowScripts, which breaks
++# the better-sqlite3 native-binding compile below (build failed 2026-07-16 when
++# @latest moved). 11.16.0 is verified working; bump deliberately, never floating.
++RUN npm install -g npm@11.16.0 \
+   && npm cache clean --force
+ 
+ # ── Builder ────────────────────────────────────────────────────────────────

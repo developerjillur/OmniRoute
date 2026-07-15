@@ -7,17 +7,25 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 60,
-    "patches": 43,
+    "total": 61,
+    "patches": 44,
     "new": 15,
     "tooling": 2,
     "upstreamCandidates": 46,
     "nexaSpecific": 6,
-    "needsReview": 8,
+    "needsReview": 9,
     "pendingUpstreamPR": 11,
     "mergedUpstreamPR": 3
   },
   "items": [
+    {
+      "file": "patches/Dockerfile.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "Dockerfile",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
     {
       "file": "patches/bin__cli__api.mjs.patch",
       "layer": "patch",
