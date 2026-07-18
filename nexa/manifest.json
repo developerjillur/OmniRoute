@@ -7,13 +7,13 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 63,
-    "patches": 46,
-    "new": 15,
+    "total": 66,
+    "patches": 48,
+    "new": 16,
     "tooling": 2,
     "upstreamCandidates": 46,
     "nexaSpecific": 6,
-    "needsReview": 11,
+    "needsReview": 14,
     "pendingUpstreamPR": 11,
     "mergedUpstreamPR": 3
   },
@@ -250,6 +250,22 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/src__app__(dashboard)__dashboard__usage__components__ProviderLimits__QuotaCard.tsx.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/app/(dashboard)/dashboard/usage/components/ProviderLimits/QuotaCard.tsx",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__app__(dashboard)__dashboard__usage__components__ProviderLimits__parts__QuotaCardExpanded.tsx.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaCardExpanded.tsx",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/src__app__.well-known__agent.json__route.ts.patch",
       "layer": "patch",
       "class": "upstream-candidate",
@@ -470,6 +486,14 @@
       "layer": "new",
       "class": "upstream-candidate",
       "target": "src/app/(dashboard)/dashboard/tools/page.tsx",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaModelList.tsx",
+      "layer": "new",
+      "class": "needs-review",
+      "target": "src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaModelList.tsx",
       "conflictRisk": "none",
       "upstreamPR": null
     },

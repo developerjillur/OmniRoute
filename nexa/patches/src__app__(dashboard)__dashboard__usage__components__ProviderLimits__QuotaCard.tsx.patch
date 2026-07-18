@@ -1,0 +1,12 @@
+diff --git a/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/QuotaCard.tsx b/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/QuotaCard.tsx
+index 96a88afd0..520133d47 100644
+--- a/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/QuotaCard.tsx
++++ b/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/QuotaCard.tsx
+@@ -110,6 +110,7 @@ export default function QuotaCard({
+       />
+       <QuotaCardExpanded
+         quotas={quotas}
++        provider={connection.provider}
+         loading={loading}
+         error={error}
+         message={quota?.message ?? null}
