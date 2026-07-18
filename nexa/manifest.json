@@ -7,13 +7,13 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 61,
-    "patches": 44,
+    "total": 63,
+    "patches": 46,
     "new": 15,
     "tooling": 2,
     "upstreamCandidates": 46,
     "nexaSpecific": 6,
-    "needsReview": 9,
+    "needsReview": 11,
     "pendingUpstreamPR": 11,
     "mergedUpstreamPR": 3
   },
@@ -87,6 +87,22 @@
       "layer": "patch",
       "class": "upstream-candidate",
       "target": "next.config.mjs",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/open-sse__config__codexClient.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "open-sse/config/codexClient.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/open-sse__config__providers__registry__codex__index.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "open-sse/config/providers/registry/codex/index.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },

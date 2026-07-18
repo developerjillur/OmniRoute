@@ -1,0 +1,17 @@
+diff --git a/open-sse/config/codexClient.ts b/open-sse/config/codexClient.ts
+index 1b6afa395..1ab10b452 100644
+--- a/open-sse/config/codexClient.ts
++++ b/open-sse/config/codexClient.ts
+@@ -1,4 +1,11 @@
+-const DEFAULT_CODEX_CLIENT_VERSION = "0.142.0";
++// Bumped 0.142.0 → 0.144.0 so the Codex OAuth backend unlocks the GPT-5.6 series
++// (gpt-5.6-sol/terra/luna + -pro). The backend gates newer models on the reported
++// Codex client version: at 0.142.0 chatgpt.com/backend-api/codex/responses returns
++// 400 "The 'gpt-5.6-sol' model requires a newer version of Codex." 0.144.0 is the
++// current released codex CLI (matches the binary Hermes' primary transport spawns,
++// which is how Hermes surfaces GPT-5.6 on the same OAuth subscription). Override at
++// runtime with CODEX_CLIENT_VERSION. Older Codex models remain unaffected.
++const DEFAULT_CODEX_CLIENT_VERSION = "0.144.0";
+ const DEFAULT_CODEX_USER_AGENT_PLATFORM = "Windows 10.0.26200";
+ const DEFAULT_CODEX_USER_AGENT_ARCH = "x64";
+ const CODEX_VERSION_OVERRIDE_ENV = "CODEX_CLIENT_VERSION";
