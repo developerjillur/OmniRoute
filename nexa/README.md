@@ -25,6 +25,7 @@ patch that no longer applies after upstream rewrites that exact region — repor
 | `skill/`, `agent/` | the `nexa-overlay` skill + `nexa-overlay-maintainer` agent (installed to `.claude/` by setup) |
 | `lib/overlay.mjs`  | the engine (inventory, guard, apply/restore, patch-health)                                    |
 | `manifest.json`    | registry of every item (layer, class, upstream target, PR status)                             |
+| `docs/`            | durable references that must survive upstream updates — e.g. `CODEX-IMAGE-GENERATION.md` (the `codex/gpt-5.5` images endpoint + model matrix + post-update checklist) |
 
 ## Commands (run from repo root)
 
