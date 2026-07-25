@@ -1,0 +1,16 @@
+diff --git a/.husky/pre-commit b/.husky/pre-commit
+index ec14ffcd2..a7420c92d 100755
+--- a/.husky/pre-commit
++++ b/.husky/pre-commit
+@@ -11,3 +11,11 @@ npx lint-staged
+ node scripts/check/check-docs-sync.mjs
+ npm run check:any-budget:t11
+ node scripts/check/check-tracked-artifacts.mjs
++
++# OVERLAY GUARD (nexa child-theme): fail the commit if ANY file outside nexa/
++# drifts from pristine upstream. Golden rule #1 is 'never edit an upstream file
++# on nexalance' — before this hook that rule was documented but not enforced, so
++# a direct edit to Dockerfile/.npmrc/src/** could be committed and would then
++# collide with the overlay at build time (and be silently dropped by a plain
++# `docker build`, which skips patch application entirely).
++node nexa/check/pristine-base.mjs

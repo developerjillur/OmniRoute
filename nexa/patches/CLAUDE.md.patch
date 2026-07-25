@@ -1,0 +1,56 @@
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 324729d31..66a67c05f 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -2,6 +2,51 @@
+ 
+ This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+ 
++---
++
++## ⛔ STOP — read this before editing ANY file or building
++
++This fork is a **child-theme overlay**. The upstream tree is kept **byte-for-byte
++pristine**; every NexaLance change lives in `nexa/`. Two rules, both learned the
++hard way on 2026-07-25:
++
++**1. NEVER edit a file outside `nexa/`.**
++Put the change in `nexa/patches/<path-with-__-instead-of-slashes>.patch`:
++```bash
++git diff upstream-main -- <file> > nexa/patches/<slug>.patch
++git checkout upstream-main -- <file>          # restore pristine
++node nexa/gen-manifest.mjs                    # register it
++node nexa/check/pristine-base.mjs             # must print ✓ pristine
++```
++If a patch for that file already exists, **merge into it** — do not overwrite:
++restore pristine → `git apply` the existing patch → re-add your change → re-cut.
++The pre-commit hook now enforces this. Do **not** bypass it with `--no-verify`.
++
++**2. NEVER build with plain `docker build` / `npm run build`.**
++The deploy build is:
++```bash
++node nexa/build.mjs        # apply patches → build → auto-restore
++```
++A plain `docker build` skips patch application, so the image silently loses every
++overlay customisation. This actually happened: an image built that way dropped all
++12 `gpt-5.6` models (222 → 204) because they come from
++`nexa/patches/open-sse__config__providers__registry__codex__index.ts.patch`, not
++from upstream source. It was caught only by diffing `/v1/models` before/after.
++
++**After ANY deploy, verify the model roster** — count + spot-check `gpt-5.6`:
++```bash
++curl -s -H "authorization: Bearer $OMNIROUTE_API_KEY" \
++  https://omni.nexaconnect.cloud/v1/models | python3 -c \
++  'import sys,json;i=[m["id"] for m in json.load(sys.stdin)["data"]];print(len(i),[x for x in i if "5.6" in x][:3])'
++```
++Healthy = **222 models** with `codex/gpt-5.6-*` present. A drop means patches did
++not apply — roll back and rebuild via `nexa/build.mjs`.
++
++Full rules: `nexa/README.md` (Golden rules) and the `nexa-overlay` skill in
++`.claude/skills/`.
++
++---
++
+ ## Quick Start
+ 
+ ```bash

@@ -1,0 +1,57 @@
+diff --git a/tests/unit/classify429.test.ts b/tests/unit/classify429.test.ts
+index 668de125d..89f74f0cd 100644
+--- a/tests/unit/classify429.test.ts
++++ b/tests/unit/classify429.test.ts
+@@ -2,6 +2,7 @@ import { test } from "node:test";
+ import assert from "node:assert/strict";
+ import {
+   classify429,
++  classify429FromError,
+   looksLikeQuotaExhausted,
+   parseRetryAfter,
+   retryAfterFromResponse,
+@@ -207,3 +208,44 @@ test("retryAfterFromResponse: case-insensitive header lookup", () => {
+   assert.equal(retryAfterFromResponse({ headers: {} }), null);
+   assert.equal(retryAfterFromResponse({}), null);
+ });
++
++// --- Anthropic subscription extra-usage exhaustion (arrives as HTTP 400) ---
++//
++// Real body seen from OmniRoute -> hermes:
++//   HTTP 400: [400]: You're out of extra usage. Add more at
++//   claude.ai/settings/usage and keep going.
++//
++// Before the fix classify429 bailed on `status !== 429` and returned
++// "transient", so the breaker retried the SAME exhausted Claude Code account
++// seconds later instead of cooling it down and rotating to a healthy one.
++
++const ANTHROPIC_EXTRA_USAGE =
++  "[400]: You're out of extra usage. Add more at claude.ai/settings/usage and keep going.";
++
++test("classify429: Anthropic 400 extra-usage exhaustion is quota_exhausted (not transient)", () => {
++  assert.equal(classify429({ status: 400, body: ANTHROPIC_EXTRA_USAGE }), "quota_exhausted");
++});
++
++test("classify429: a plain 400 WITHOUT a quota phrase stays transient (no false quota lockout)", () => {
++  assert.equal(classify429({ status: 400, body: "invalid request: messages[0].role" }), "transient");
++  assert.equal(classify429({ status: 400, body: "" }), "transient");
++  assert.equal(classify429({ status: 400 }), "transient");
++});
++
++test("classify429FromError: the real thrown-error shape classifies as quota_exhausted", () => {
++  assert.equal(
++    classify429FromError({ status: 400, message: ANTHROPIC_EXTRA_USAGE }),
++    "quota_exhausted"
++  );
++  assert.equal(
++    classify429FromError({ response: { status: 400, data: { error: { message: ANTHROPIC_EXTRA_USAGE } } } }),
++    "quota_exhausted"
++  );
++});
++
++test("looksLikeQuotaExhausted: matches the extra-usage wording and the settings URL", () => {
++  assert.equal(looksLikeQuotaExhausted("You're out of extra usage."), true);
++  assert.equal(looksLikeQuotaExhausted("Add more at claude.ai/settings/usage"), true);
++  // must NOT flag ordinary usage talk
++  assert.equal(looksLikeQuotaExhausted("token usage recorded"), false);
++});

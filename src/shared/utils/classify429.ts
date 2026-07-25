@@ -53,15 +53,6 @@ const QUOTA_PATTERNS: ReadonlyArray<RegExp> = [
   /individual quota reached/i,
   /enable overages/i,
   /INSUFFICIENT_G1_CREDITS_BALANCE/i,
-
-  // Anthropic subscription (Claude Code / Max) extra-usage exhaustion:
-  // "You're out of extra usage. Add more at claude.ai/settings/usage and keep
-  // going." Exactly the Antigravity failure shape above — no pattern matched, so
-  // the account looked transiently unhealthy and the breaker retried the SAME
-  // exhausted connection in ~5s instead of cooling it down and rotating to a
-  // healthy one. Note this arrives as HTTP **400**, not 429 — see classify429.
-  /out of extra usage/i,
-  /claude\.ai\/settings\/usage/i,
 ];
 
 /**
@@ -121,15 +112,6 @@ export function classify429(response: {
   headers?: Record<string, string>;
   body?: unknown;
 }): FailureKind {
-  // A quota cap does not always arrive as 429. Anthropic reports subscription
-  // extra-usage exhaustion as HTTP 400 ("You're out of extra usage…"), so those
-  // bodies must be scanned too — otherwise the breaker sees `transient`, retries
-  // the same dead account seconds later, and never rotates to a healthy one.
-  // Promotion stays keyword-gated: a 400 WITHOUT an explicit quota phrase is a
-  // genuine bad request and keeps its previous `transient` classification.
-  if (response.status === 400) {
-    return looksLikeQuotaExhausted(response.body) ? "quota_exhausted" : "transient";
-  }
   if (response.status !== 429) return "transient";
   if (looksLikeQuotaExhausted(response.body)) return "quota_exhausted";
   return "rate_limit";

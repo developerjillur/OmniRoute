@@ -7,17 +7,41 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 66,
-    "patches": 48,
+    "total": 71,
+    "patches": 53,
     "new": 16,
     "tooling": 2,
     "upstreamCandidates": 46,
     "nexaSpecific": 6,
-    "needsReview": 14,
+    "needsReview": 19,
     "pendingUpstreamPR": 11,
     "mergedUpstreamPR": 3
   },
   "items": [
+    {
+      "file": "patches/.husky__pre-commit.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": ".husky/pre-commit",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/.npmrc.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": ".npmrc",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/CLAUDE.md.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "CLAUDE.md",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
     {
       "file": "patches/Dockerfile.patch",
       "layer": "patch",
@@ -434,10 +458,26 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/src__shared__utils__classify429.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/shared/utils/classify429.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/tests__e2e__providers-management.spec.ts.patch",
       "layer": "patch",
       "class": "upstream-candidate",
       "target": "tests/e2e/providers-management.spec.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/tests__unit__classify429.test.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "tests/unit/classify429.test.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },
