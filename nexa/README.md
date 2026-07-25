@@ -16,15 +16,15 @@ patch that no longer applies after upstream rewrites that exact region — repor
 
 ## Layout
 
-| Path               | What                                                                                          |
-| ------------------ | --------------------------------------------------------------------------------------------- |
-| `patches/`         | surgical unified diffs vs pristine upstream (one per file), applied with `git apply --3way`   |
-| `new/`             | net-new files, mirrored to their real repo paths; copied into place at build                  |
-| `config/`          | env / `next.config` params (Phase-2 promotion target)                                         |
-| `plugins/`         | OmniRoute-native plugins — rarely usable (API can't set headers/see streaming/combo); most stay patches |
-| `skill/`, `agent/` | the `nexa-overlay` skill + `nexa-overlay-maintainer` agent (installed to `.claude/` by setup) |
-| `lib/overlay.mjs`  | the engine (inventory, guard, apply/restore, patch-health)                                    |
-| `manifest.json`    | registry of every item (layer, class, upstream target, PR status)                             |
+| Path               | What                                                                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `patches/`         | surgical unified diffs vs pristine upstream (one per file), applied with `git apply --3way`                                                                           |
+| `new/`             | net-new files, mirrored to their real repo paths; copied into place at build                                                                                          |
+| `config/`          | env / `next.config` params (Phase-2 promotion target)                                                                                                                 |
+| `plugins/`         | OmniRoute-native plugins — rarely usable (API can't set headers/see streaming/combo); most stay patches                                                               |
+| `skill/`, `agent/` | the `nexa-overlay` skill + `nexa-overlay-maintainer` agent (installed to `.claude/` by setup)                                                                         |
+| `lib/overlay.mjs`  | the engine (inventory, guard, apply/restore, patch-health)                                                                                                            |
+| `manifest.json`    | registry of every item (layer, class, upstream target, PR status)                                                                                                     |
 | `docs/`            | durable references that must survive upstream updates — e.g. `CODEX-IMAGE-GENERATION.md` (the `codex/gpt-5.5` images endpoint + model matrix + post-update checklist) |
 
 ## Commands (run from repo root)
@@ -37,8 +37,24 @@ node nexa/build.mjs           # apply → npm run build → auto-restore (the de
 node nexa/update.mjs          # on-demand: fetch upstream, ff base, merge (conflict-free), patch-health
 node nexa/restore.mjs         # undo an apply (return to pristine)
 node nexa/check/pristine-base.mjs   # the guard — fails if anything outside nexa/ drifts
+node nexa/check/combo-models.mjs    # live-roster guard — fails if a combo tier is a nonexistent model
 node nexa/gen-manifest.mjs    # regenerate manifest.json from live contents
 ```
+
+### After ANY combo edit, run the roster guard
+
+Combos live in the **gateway database**, not in git — so a bad edit leaves no diff and no test failure.
+On 2026-07-25 `nexa/hermes-brain` was found pointing at `cx/gpt-5.6-sol-high`, **an id that does not
+exist**: the Codex tier failed instantly on every call and was silently skipped, so the owner's
+Claude → Codex → GLM cascade had been running as Claude → GLM. Nothing looked broken.
+
+```bash
+set -a; source ~/.nexalance/omniroute-cloud.env; set +a
+node nexa/check/combo-models.mjs
+```
+
+A dead tier is invisible from the outside — the combo still answers, it just quietly lost a layer of
+redundancy. Never write a model id into a combo without confirming it appears in `GET /v1/models`.
 
 ## Golden rules
 
