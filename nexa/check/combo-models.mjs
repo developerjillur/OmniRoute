@@ -27,6 +27,17 @@ const WATCHLIST = [
   { label: "Claude Opus 5", match: /claude-opus-5/i },
 ];
 
+// Models that EXIST on the roster but are KNOWN BROKEN through this gateway.
+// Existence is not health — `/v1/models` lists them and they still fail on call.
+// Worse, a failing tier can trip the PROVIDER-level breaker and take healthy
+// siblings on the same provider down with it (see claude-fable-5 below).
+const QUARANTINE = [
+  {
+    id: "cc/claude-fable-5",
+    why: "returns an empty response (no usable choices/output). 2026-07-25: promoting it to tier-1 of nexa/hermes-brain tripped the `cc` provider breaker, so cc/claude-opus-4-8 in tier-2 was ALSO skipped and live traffic fell through to GLM. Reverted. Re-test with a direct call before ever reinstating.",
+  },
+];
+
 if (!KEY) {
   console.error("  ✗ OMNIROUTE_API_KEY not set — source ~/.nexalance/omniroute-cloud.env first.");
   process.exit(1);
@@ -70,6 +81,22 @@ for (const combo of combos) {
   }
 }
 
+// Quarantine check — a tier can be a REAL id and still be a live outage.
+const quarantined = [];
+for (const combo of combos) {
+  for (const t of combo.models || []) {
+    const q = QUARANTINE.find((x) => x.id === t.model);
+    if (q) quarantined.push({ combo: combo.name, ...q });
+  }
+}
+if (quarantined.length) {
+  console.log("\n  --- QUARANTINED models in use ---");
+  for (const q of quarantined) {
+    console.log(`  ✗ ${q.combo} uses ${q.id}`);
+    console.log(`      ${q.why}`);
+  }
+}
+
 console.log("\n  --- watchlist (upstream availability) ---");
 for (const w of WATCHLIST) {
   const hits = [...ids].filter((i) => w.match.test(i));
@@ -80,9 +107,13 @@ for (const w of WATCHLIST) {
   );
 }
 
-if (!dead.length) {
-  console.log("\n  ✓ every combo tier resolves to a real model.");
+if (!dead.length && !quarantined.length) {
+  console.log("\n  ✓ every combo tier resolves to a real model, none quarantined.");
   process.exit(0);
+}
+if (!dead.length && quarantined.length) {
+  console.error(`\n  ✗ ${quarantined.length} quarantined model(s) in use — see above.`);
+  process.exit(1);
 }
 console.error(`\n  ✗ ${dead.length} dead tier(s) — these fail instantly and are silently skipped:`);
 for (const d of dead) console.error(`    • ${d.combo} → ${d.model}`);
