@@ -36,6 +36,13 @@ RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt,sharing=shared \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
+# .npmrc MUST be copied too — `package*.json` does not match it. Without it the
+# image build silently ran with npm DEFAULTS: `allow-scripts` stayed empty so
+# better-sqlite3's native binding was never compiled (the build then died on
+# `require('better-sqlite3')`), and the fetch-retry hardening that file
+# documents as covering "electron / docker / unit" never actually reached the
+# docker path. It carries no credentials — it is committed to the repo.
+COPY .npmrc ./
 # Workspace package manifests MUST be present before `npm ci` so npm materializes
 # the workspace and installs its *workspace-only* deps (e.g. safe-regex,
 # @toon-format/toon — declared in open-sse/package.json, not hoisted to root).
