@@ -1,41 +1,24 @@
 diff --git a/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaCardExpanded.tsx b/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaCardExpanded.tsx
-index 3fccc765b..d9e9bba89 100644
+index a672cd978..0a37670f3 100644
 --- a/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaCardExpanded.tsx
 +++ b/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaCardExpanded.tsx
-@@ -11,6 +11,8 @@ import {
- } from "../utils";
+@@ -12,6 +12,8 @@ import {
  import QuotaMiniBar from "../QuotaMiniBar";
  import { translateUsageOrFallback, type UsageTranslationValues } from "../i18nFallback";
+ import { hasFixedQuotaOrder } from "../quotaParsing";
 +// nexa overlay: additive per-account catalog-model enumeration (display-only).
 +import QuotaModelList from "./QuotaModelList";
  
  const CURRENCY_SYMBOLS: Record<string, string> = {
    USD: "$",
-@@ -38,6 +40,8 @@ export function getVisibleQuotas(sortedQuotas: any[], expanded: boolean): any[]
- 
- interface Props {
-   quotas: any[];
-+  /** nexa overlay: provider id, used to enumerate the account's catalog models. */
-+  provider?: string;
-   loading: boolean;
-   error: string | null;
-   message?: string | null;
-@@ -155,6 +159,7 @@ function QuotaDetailRow({ q }: { q: any }) {
- 
- export default function QuotaCardExpanded({
-   quotas,
-+  provider,
-   loading,
-   error,
-   message,
-@@ -218,6 +223,10 @@ export default function QuotaCardExpanded({
-         </div>
+@@ -254,6 +256,10 @@ export default function QuotaCardExpanded({
+         </button>
        )}
  
 +      {/* nexa overlay: additive per-account catalog-model enumeration. Renders
 +          below the quota windows; returns null for non-Codex providers. */}
-+      {!loading && !error && provider ? <QuotaModelList provider={provider} /> : null}
++      {!loading && !error && providerId ? <QuotaModelList provider={providerId} /> : null}
 +
-       {!loading && !error && sortedQuotas.length > DEFAULT_VISIBLE_ROWS && (
-         <button
-           type="button"
+       <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/40">
+         {refreshedLabel && (
+           <span

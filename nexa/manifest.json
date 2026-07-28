@@ -1,19 +1,19 @@
 {
   "_comment": "NexaLance OmniRoute child-theme overlay registry. layer: patch=surgical diff onto pristine upstream; new=net-new file copied in at build; tooling=overlay machinery. class: upstream-candidate=generic fix worth PRing to diegosouzapw/OmniRoute (Phase-2 shrinker); nexa-specific=stays in the overlay; needs-review=triage. Base stays byte-for-byte pristine; regenerate with `node nexa/gen-manifest.mjs`.",
   "upstreamBase": {
-    "sha": "92715c8f2",
-    "version": "3.8.46"
+    "sha": "7ee5bbc64",
+    "version": "3.8.48"
   },
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 71,
-    "patches": 53,
-    "new": 16,
+    "total": 64,
+    "patches": 49,
+    "new": 13,
     "tooling": 2,
-    "upstreamCandidates": 46,
+    "upstreamCandidates": 43,
     "nexaSpecific": 6,
-    "needsReview": 19,
+    "needsReview": 15,
     "pendingUpstreamPR": 11,
     "mergedUpstreamPR": 3
   },
@@ -111,22 +111,6 @@
       "layer": "patch",
       "class": "upstream-candidate",
       "target": "next.config.mjs",
-      "conflictRisk": "on-overlap",
-      "upstreamPR": null
-    },
-    {
-      "file": "patches/open-sse__config__codexClient.ts.patch",
-      "layer": "patch",
-      "class": "needs-review",
-      "target": "open-sse/config/codexClient.ts",
-      "conflictRisk": "on-overlap",
-      "upstreamPR": null
-    },
-    {
-      "file": "patches/open-sse__config__providers__registry__codex__index.ts.patch",
-      "layer": "patch",
-      "class": "needs-review",
-      "target": "open-sse/config/providers/registry/codex/index.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },
@@ -274,14 +258,6 @@
       "upstreamPR": null
     },
     {
-      "file": "patches/src__app__(dashboard)__dashboard__usage__components__ProviderLimits__QuotaCard.tsx.patch",
-      "layer": "patch",
-      "class": "needs-review",
-      "target": "src/app/(dashboard)/dashboard/usage/components/ProviderLimits/QuotaCard.tsx",
-      "conflictRisk": "on-overlap",
-      "upstreamPR": null
-    },
-    {
       "file": "patches/src__app__(dashboard)__dashboard__usage__components__ProviderLimits__parts__QuotaCardExpanded.tsx.patch",
       "layer": "patch",
       "class": "needs-review",
@@ -302,14 +278,6 @@
       "layer": "patch",
       "class": "needs-review",
       "target": "src/app/api/cli-tools/hermes-agent-settings/route.ts",
-      "conflictRisk": "on-overlap",
-      "upstreamPR": null
-    },
-    {
-      "file": "patches/src__app__api__db__health__route.ts.patch",
-      "layer": "patch",
-      "class": "upstream-candidate",
-      "target": "src/app/api/db/health/route.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },
@@ -569,30 +537,6 @@
       "layer": "new",
       "class": "upstream-candidate",
       "target": "tests/unit/authz/__stub_apiKeys.mjs",
-      "conflictRisk": "none",
-      "upstreamPR": null
-    },
-    {
-      "file": "new/tests/unit/combo-diagnostics-trace.test.ts",
-      "layer": "new",
-      "class": "upstream-candidate",
-      "target": "tests/unit/combo-diagnostics-trace.test.ts",
-      "conflictRisk": "none",
-      "upstreamPR": null
-    },
-    {
-      "file": "new/tests/unit/idempotency-fusion-collision.test.ts",
-      "layer": "new",
-      "class": "needs-review",
-      "target": "tests/unit/idempotency-fusion-collision.test.ts",
-      "conflictRisk": "none",
-      "upstreamPR": null
-    },
-    {
-      "file": "new/tests/unit/provider-validation-ssrf-guard.test.ts",
-      "layer": "new",
-      "class": "upstream-candidate",
-      "target": "tests/unit/provider-validation-ssrf-guard.test.ts",
       "conflictRisk": "none",
       "upstreamPR": null
     },
