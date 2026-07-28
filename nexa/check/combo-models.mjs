@@ -62,10 +62,21 @@ const combos = Array.isArray(combosRaw) ? combosRaw : combosRaw.combos || [];
 
 console.log(`  gateway ${BASE} — ${ids.size} models, ${combos.length} combos\n`);
 
+// A base model id can be routable WITHOUT being catalog-listed itself. Upstream
+// v3.8.48 lists the GPT-5.6 codex models only as effort-variants (gpt-5.6-sol-high/
+// -medium/-xhigh/...) and drops the bare `gpt-5.6-sol` from /v1/models — yet the bare
+// id still resolves and completes (the codex executor strips the effort suffix to the
+// base model). Verified live 2026-07-28: `cx/gpt-5.6-sol` -> 200, model gpt-5.6-sol.
+// So a tier is LIVE if its exact id OR any of its effort-variants is on the roster;
+// a genuinely nonexistent model has neither and is still flagged.
+const EFFORT_SUFFIXES = ["ultra", "max", "xhigh", "high", "medium", "low", "none"];
+const isResolvable = (model) =>
+  ids.has(model) || EFFORT_SUFFIXES.some((e) => ids.has(`${model}-${e}`));
+
 const dead = [];
 for (const combo of combos) {
   const tiers = combo.models || [];
-  const bad = tiers.filter((t) => t.model && !ids.has(t.model));
+  const bad = tiers.filter((t) => t.model && !isResolvable(t.model));
   const mark = bad.length ? "✗" : "✓";
   console.log(`  ${mark} ${combo.name} — ${tiers.length} tiers`);
   for (const t of bad) {
