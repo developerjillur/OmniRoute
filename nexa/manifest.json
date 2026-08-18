@@ -8,13 +8,13 @@
   "generatedFrom": "live nexa/ contents",
   "counts": {
     "total": 63,
-    "patches": 49,
-    "new": 12,
+    "patches": 48,
+    "new": 13,
     "tooling": 2,
     "upstreamCandidates": 0,
     "nexaSpecific": 2,
     "needsReview": 61,
-    "pendingUpstreamPR": 10,
+    "pendingUpstreamPR": 9,
     "mergedUpstreamPR": 3
   },
   "items": [
@@ -312,17 +312,6 @@
       "upstreamPR": null
     },
     {
-      "file": "patches/src__app__api__v1__models__catalog.ts.patch",
-      "layer": "patch",
-      "class": "needs-review",
-      "target": "src/app/api/v1/models/catalog.ts",
-      "conflictRisk": "on-overlap",
-      "upstreamPR": {
-        "pr": 6544,
-        "state": "OPEN"
-      }
-    },
-    {
       "file": "patches/src__app__docs__lib__openapi.generated.ts.patch",
       "layer": "patch",
       "class": "needs-review",
@@ -447,6 +436,14 @@
       "class": "needs-review",
       "target": "tests/unit/classify429.test.ts",
       "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/.github/workflows/nexa-upstream-sync.yml",
+      "layer": "new",
+      "class": "needs-review",
+      "target": ".github/workflows/nexa-upstream-sync.yml",
+      "conflictRisk": "none",
       "upstreamPR": null
     },
     {
