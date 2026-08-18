@@ -1,0 +1,136 @@
+name: nexa · upstream sync
+
+# Pull the newest upstream RELEASE onto the pristine base and re-apply the
+# overlay. Runs daily; can be kicked by hand.
+#
+# THE ONE RULE: never push a broken overlay.
+#
+# `nexa/status.mjs` reports "all N patches apply cleanly" even when they do not —
+# it uses `git apply --3way`, which SUCCEEDS-with-conflicts. So this workflow
+# does the honest test instead: apply every patch in order and count the files
+# left carrying conflict markers. A single marker means a human re-cut is owed,
+# and the job opens an issue naming the exact patches rather than pushing.
+#
+# It also tracks release TAGS, never `main` or `release/*` prep branches. As of
+# 2026-08-18 `release/v3.8.50` exists with package.json 3.8.50 and NO v3.8.50
+# tag — 2,379 commits ahead of v3.8.49 and moving hourly. That is not something
+# a production gateway follows.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"     # daily 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: nexa-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: nexalance
+          fetch-depth: 0            # update.mjs diffs against upstream-main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Identify (git refuses to commit without one)
+        run: |
+          git config user.name  "nexa-sync[bot]"
+          git config user.email "nexa-sync@users.noreply.github.com"
+
+      - name: Add upstream + base ref
+        run: |
+          git remote get-url upstream >/dev/null 2>&1 \
+            || git remote add upstream https://github.com/diegosouzapw/OmniRoute.git
+          git rev-parse --verify upstream-main >/dev/null 2>&1 \
+            || git branch upstream-main origin/upstream-main
+
+      - name: Pull the newest upstream release
+        id: update
+        run: node nexa/update.mjs 2>&1 | tee /tmp/update.log
+
+      - name: HONEST patch check (markers, not --3way exit codes)
+        id: check
+        run: |
+          node nexa/restore.mjs >/dev/null 2>&1 || true
+          bad=""
+          for p in nexa/patches/*.patch; do
+            git apply --3way --whitespace=nowarn "$p" 2>/dev/null \
+              || bad="${bad} $(basename "$p" .patch)"
+          done
+          markers="$(grep -rlE '^(<<<<<<<|>>>>>>>)' src open-sse bin scripts next.config.mjs 2>/dev/null || true)"
+          node nexa/restore.mjs >/dev/null 2>&1 || true
+          {
+            echo "conflicts<<EOF"
+            printf '%s\n' $bad
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [ -n "$bad" ] || [ -n "$markers" ]; then
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "clean=true"  >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push the sync (only when the overlay still applies)
+        if: steps.check.outputs.clean == 'true'
+        run: |
+          if git diff --quiet HEAD origin/nexalance -- 2>/dev/null; then
+            echo "nothing to push — already on the latest release"
+          else
+            git push origin nexalance
+          fi
+
+      - name: Open an issue instead of pushing a broken overlay
+        if: steps.check.outputs.clean != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const conflicts = `${{ steps.check.outputs.conflicts }}`.trim();
+            const body = [
+              "Upstream moved and the overlay no longer applies cleanly.",
+              "",
+              "**Nothing was pushed** — a half-applied overlay is worse than being behind.",
+              "",
+              "Patches needing a re-cut:",
+              "```",
+              conflicts || "(see the run log)",
+              "```",
+              "",
+              "Re-cut one at a time:",
+              "```bash",
+              "node nexa/restore.mjs",
+              "git apply --3way nexa/patches/<name>.patch   # leaves <<<<<<< markers",
+              "# resolve by hand, then:",
+              "git diff -- <file> > nexa/patches/<name>.patch",
+              "git checkout HEAD -- <file>",
+              "node nexa/apply.mjs   # must finish with zero markers",
+              "```",
+              "",
+              "If upstream has absorbed one of our files, delete it from `nexa/new/`",
+              "and re-run `node nexa/gen-manifest.mjs`.",
+            ].join("\n");
+            const title = "nexa: upstream sync blocked — overlay patches need re-cutting";
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: "open", labels: "nexa-sync",
+            });
+            if (open.data.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: open.data[0].number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ["nexa-sync"],
+              });
+            }
