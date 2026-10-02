@@ -22,7 +22,7 @@ Install the ingress helper once with the owner's administrator password:
 sudo /bin/bash "$HOME/Developer/OmniRoute/nexa/deploy/install-native-ingress.sh"
 ```
 
-The installer does not trust a new certificate or change account credentials. Re-running it preserves the prior installed helper. The helper forwards encrypted bytes; when the Bridge listener is unavailable it resolves the original vendor using public DNS and forwards untouched TLS there. This direct path uses the native account's quota.
+The installer does not trust a new certificate or change account credentials. Re-running it preserves the prior installed helper. The helper reads only the public TLS ClientHello hostname. It routes exactly `api.anthropic.com` to the Bridge and sends other loopback TLS names to the original Local wildcard listener through `127.0.0.2:443`. It forwards every TLS byte unchanged; when the Bridge listener is unavailable it resolves the original vendor using public DNS and forwards untouched TLS there. This direct path uses the native account's quota.
 
 ## Start, Stop and recovery
 
