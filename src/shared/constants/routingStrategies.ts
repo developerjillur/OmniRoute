@@ -11,10 +11,12 @@ export const ROUTING_STRATEGY_VALUES = [
   "reset-aware",
   "reset-window",
   "headroom",
+  "quota-weighted",
   "strict-random",
   "auto",
   "lkgp",
   "context-optimized",
+  "cache-optimized",
   "fusion",
   "pipeline",
 ] as const;
@@ -36,6 +38,7 @@ export type AnyRoutingStrategyValue = RoutingStrategyValue | InternalRoutingStra
 
 export const AUTO_ROUTING_STRATEGY_VALUES = [
   "rules",
+  "score",
   "cost",
   "eco",
   "latency",
@@ -56,6 +59,7 @@ export const ACCOUNT_FALLBACK_STRATEGY_VALUES = [
   "random",
   "least-used",
   "cost-optimized",
+  "expiry-first",
   "strict-random",
 ] as const;
 
@@ -170,6 +174,13 @@ export const ROUTING_STRATEGIES: RoutingStrategyOption[] = [
     icon: "battery_charging_full",
   },
   {
+    value: "quota-weighted",
+    labelKey: "quotaWeighted",
+    combosDescKey: "quotaWeightedDesc",
+    settingsDescKey: "quotaWeightedDesc",
+    icon: "pie_chart",
+  },
+  {
     value: "strict-random",
     labelKey: "strictRandom",
     combosDescKey: "strictRandomDesc",
@@ -196,6 +207,13 @@ export const ROUTING_STRATEGIES: RoutingStrategyOption[] = [
     combosDescKey: "contextOptimizedDesc",
     settingsDescKey: "contextOptDesc",
     icon: "text_snippet",
+  },
+  {
+    value: "cache-optimized",
+    labelKey: "cacheOpt",
+    combosDescKey: "cacheOptimizedDesc",
+    settingsDescKey: "cacheOptDesc",
+    icon: "cached",
   },
   {
     value: "fusion",

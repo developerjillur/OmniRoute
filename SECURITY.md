@@ -42,13 +42,13 @@ Request → CORS → Authz pipeline (classify → policies → enforce)
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | **Dashboard Login**   | Password-based auth with JWT tokens (HttpOnly cookies)                                                                                    |
 | **API Key Auth**      | HMAC-signed keys with CRC validation                                                                                                      |
-| **OAuth 2.0 + PKCE**  | 14 providers (Claude, Codex, GitHub, Cursor, Antigravity, Gemini, Kimi Coding, Kilo Code, Cline, Qwen, Kiro, Qoder, Windsurf, GitLab Duo) |
+| **OAuth 2.0 + PKCE**  | Provider-specific browser/device OAuth uses PKCE where supported; import-only Devin credentials are handled separately.                    |
 | **Token Refresh**     | Automatic OAuth token refresh before expiry                                                                                               |
 | **Secure Cookies**    | `AUTH_COOKIE_SECURE=true` for HTTPS environments                                                                                          |
 | **Authz Pipeline**    | Route classification (PUBLIC / CLIENT_API / MANAGEMENT) — see `docs/architecture/AUTHZ_GUIDE.md`                                          |
 | **Route Guard Tiers** | 3-tier model for management routes (LOCAL_ONLY / ALWAYS_PROTECTED / MANAGEMENT) — see `docs/security/ROUTE_GUARD_TIERS.md`                |
 | **Manage-Scope MCP**  | Remote `/api/mcp/*` access gated by API keys with `manage` scope; `/api/cli-tools/runtime/*` stays strict-loopback. See ROUTE_GUARD_TIERS |
-| **MCP Scopes**        | ~13 granular scopes (read:health, write:combos, execute:completions, etc.) — see `docs/frameworks/MCP-SERVER.md`                          |
+| **MCP Scopes**        | 32 granular scopes (read:health, write:combos, execute:completions, etc.) — see `docs/frameworks/MCP-SERVER.md`                           |
 
 ### 🛡️ Encryption at Rest
 
@@ -77,21 +77,28 @@ Custom guardrails register via `registerGuardrail(new MyGuardrail())`. The model
 
 ### 🧠 Prompt Injection Guard
 
-Middleware that detects and blocks prompt injection attacks in LLM requests:
+Best-effort heuristic middleware that detects prompt injection patterns in LLM requests.
+**Not a complete prompt-injection firewall** — can produce false positives (benign
+persona/RPG prompts) and false negatives (leetspeak, spacing, non-English patterns).
 
 | Pattern Type        | Severity | Example                                        |
 | ------------------- | -------- | ---------------------------------------------- |
 | System Override     | High     | "ignore all previous instructions"             |
-| Role Hijack         | High     | "you are now DAN, you can do anything"         |
-| Delimiter Injection | Medium   | Encoded separators to break context boundaries |
-| DAN/Jailbreak       | High     | Known jailbreak prompt patterns                |
-| Instruction Leak    | Medium   | "show me your system prompt"                   |
+| Role Hijack         | Medium   | "you are now DAN, you can do anything"         |
+| Delimiter Injection | High     | Encoded separators to break context boundaries |
+| DAN/Jailbreak       | Medium   | Known jailbreak prompt patterns                |
+| Instruction Leak    | High     | "show me your system prompt"                   |
+| Encoding Evasion    | Medium   | base64/rot13/hex decode + instruction keywords |
+
+Only **High** severity detections are blocked in `block` mode. Medium-severity
+families are logged but never blocked by `sanitizeRequest`.
 
 Configure via dashboard (Settings → Security) or `.env`:
 
 ```env
 INPUT_SANITIZER_ENABLED=true
-INPUT_SANITIZER_MODE=block    # warn | block | redact
+INPUT_SANITIZER_MODE=block    # warn | block (injection policy; legacy "redact" does not strip injection text)
+INPUT_SANITIZER_BLOCK_THRESHOLD=high  # high (default) | medium | low — severities at/above this are blocked in block mode
 ```
 
 ### 🔒 PII Redaction
@@ -108,7 +115,8 @@ Automatic detection and optional redaction of personally identifiable informatio
 | SSN (US)      | `123-45-6789`         | `[SSN_REDACTED]`   |
 
 ```env
-PII_REDACTION_ENABLED=true
+PII_REDACTION_ENABLED=true   # request PII rewrite; independent of INPUT_SANITIZER_MODE
+PII_RESPONSE_SANITIZATION=true  # optional: redact PII in provider responses returned to clients
 ```
 
 ### 🌐 Network Security
@@ -210,11 +218,21 @@ These rules are enforced by tooling and reviewers:
 
 ## Supply-chain scanner findings (Socket.dev / Snyk / similar)
 
+> **Scope note:** `socket.yml` at the repository root only shapes `projectIgnorePaths` for Socket.dev's registry-side post-publish scan of the published npm artifact — it is not an enforced CI/PR merge gate. No workflow in `.github/workflows`, no `package.json` script, and no `Makefile` target invokes Socket.dev.
+
 The published `omniroute` npm artifact bundles the Next.js `output: "standalone"`
 build, which means every route handler — including documented privileged
 features (MITM, Zed import, Cloud Sync, embedded service supervisor) — ends
 up in `.next/server/*.js` minified chunks. Heuristic supply-chain scanners
 frequently pattern-match those chunks against malware signatures.
+
+The scanner configuration we use lives at [`socket.yml`](socket.yml) in the
+repo root (Socket.dev GitHub App format v2 — see
+<https://docs.socket.dev/docs/socket-yml>). It explicitly excludes
+non-shipped directories (`tests/`, `_tasks/`, `_references/`, `_ideia/`,
+`_mono_repo/`, `docs/`, etc.) so the scanner only reports on code paths that
+actually reach published users — the scan itself is driven by the Socket
+GitHub App reading that file, not by a workflow in this repository.
 
 For each finding category we maintain a per-finding maintainer attestation:
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Card from "./Card";
 import { CardSkeleton } from "./Loading";
 import { fmtCompact as fmt, fmtFull, fmtCost } from "@/shared/utils/formatting";
@@ -31,6 +31,7 @@ import {
 // ============================================================================
 
 export default function UsageAnalytics() {
+  const locale = useLocale();
   const t = useTranslations("analytics");
   const tCommon = useTranslations("common");
   const [range, setRange] = useState("30d");
@@ -53,6 +54,9 @@ export default function UsageAnalytics() {
       setLoading(true);
       const params = new URLSearchParams();
       params.set("range", range);
+      // This page labels the value as an estimate, so opt into token-price
+      // equivalents for flat-rate subscriptions without changing API defaults.
+      params.set("includeFlatRateEstimates", "true");
       if (range === "custom" && customStart && customEnd) {
         params.set("startDate", customStart);
         params.set("endDate", customEnd);
@@ -87,7 +91,8 @@ export default function UsageAnalytics() {
   }, [range, customStart, customEnd, selectedApiKeys, tCommon]);
 
   useEffect(() => {
-    fetchAnalytics();
+    const timer = window.setTimeout(() => void fetchAnalytics(), 0);
+    return () => window.clearTimeout(timer);
   }, [fetchAnalytics]);
 
   const handleRangeSelect = useCallback((value: string) => {
@@ -111,7 +116,7 @@ export default function UsageAnalytics() {
     if (range !== "custom" || !customStart || !customEnd) return null;
     const fmt = (iso: string) => {
       const d = new Date(iso);
-      return d.toLocaleDateString(undefined, {
+      return d.toLocaleDateString(locale, {
         month: "short",
         day: "numeric",
         hour: "2-digit",
@@ -119,7 +124,7 @@ export default function UsageAnalytics() {
       });
     };
     return `${fmt(customStart)} — ${fmt(customEnd)}`;
-  }, [range, customStart, customEnd]);
+  }, [range, customStart, customEnd, locale]);
 
   const ranges = [
     { value: "1d", label: t("period1D") },
@@ -144,8 +149,13 @@ export default function UsageAnalytics() {
     const wp = analytics?.weeklyPattern || [];
     if (!wp.length) return "—";
     const max = wp.reduce((a, b) => (a.avgTokens > b.avgTokens ? a : b), wp[0]);
-    return max.avgTokens > 0 ? max.day : "—";
-  }, [analytics]);
+    if (max.avgTokens <= 0) return "—";
+    const weekdayIndex = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(max.day);
+    if (weekdayIndex < 0) return max.day;
+    return new Intl.DateTimeFormat(locale, { weekday: "short" }).format(
+      new Date(2024, 0, 7 + weekdayIndex)
+    );
+  }, [analytics, locale]);
 
   const providerCount = useMemo(() => {
     return (analytics?.byProvider || []).length;
@@ -265,24 +275,32 @@ export default function UsageAnalytics() {
           icon="generating_tokens"
           label={t("totalTokens")}
           value={fmt(s.totalTokens)}
+          tooltip={fmtFull(s.totalTokens)}
           subValue={`${fmtFull(s.totalRequests)} ${t("chartRequests")}`}
         />
         <StatCard
           icon="input"
           label={t("inputTokens")}
           value={fmt(s.promptTokens)}
+          tooltip={fmtFull(s.promptTokens)}
           color="text-primary"
         />
         <StatCard
           icon="output"
           label={t("outputTokens")}
           value={fmt(s.completionTokens)}
+          tooltip={fmtFull(s.completionTokens)}
           color="text-emerald-500"
         />
         <StatCard
           icon="payments"
           label={t("estCost")}
           value={fmtCost(s.totalCost)}
+          tooltip={
+            s.totalCost !== undefined && s.totalCost !== null
+              ? `$${Number(s.totalCost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`
+              : undefined
+          }
           color="text-amber-500"
         />
       </div>
@@ -311,12 +329,16 @@ export default function UsageAnalytics() {
                 icon: "speed",
                 label: t("perfAvgTokens"),
                 value: fmt(avgTokensPerReq),
+                tooltip: `tokens : ${fmtFull(avgTokensPerReq)} tokens`,
                 color: "text-cyan-500",
               },
               {
                 icon: "request_quote",
                 label: t("perfCostReq"),
                 value: fmtCost(costPerReq),
+                tooltip: costPerReq
+                  ? `cost : $${Number(costPerReq).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 6 })}`
+                  : undefined,
                 color: "text-orange-500",
               },
               {
@@ -329,6 +351,7 @@ export default function UsageAnalytics() {
                 icon: "bolt",
                 label: t("perfFastReq"),
                 value: fmt(s.fastRequests || 0),
+                tooltip: `requests : ${fmtFull(s.fastRequests || 0)} requests`,
                 color: "text-sky-500",
               },
             ],

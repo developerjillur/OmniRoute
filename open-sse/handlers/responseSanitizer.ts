@@ -2,11 +2,17 @@ import {
   copyOpenAICompatibleReasoningFields,
   getReadableReasoningValue,
 } from "../utils/reasoningFields.ts";
+import { stripInternalReasoningPlaceholder } from "../utils/reasoningPlaceholder.ts";
 import { normalizeOpenAICompatibleFinishReason } from "../utils/finishReason.ts";
 import {
   collapseExcessiveNewlines,
   extractThinkingFromContent,
 } from "./responseSanitizer/reasoning.ts";
+import {
+  applyCacheHitTokensToUsage,
+  applyCacheHitTokensToResponsesUsage,
+} from "./responseSanitizer/cacheHitTokens.ts";
+import { stripObfuscationZeroWidth } from "../utils/zeroWidth.ts";
 export {
   extractThinkingFromContent,
   shouldParseTextualReasoningTags,
@@ -27,8 +33,14 @@ const ALLOWED_USAGE_FIELDS = new Set([
   "prompt_tokens",
   "completion_tokens",
   "total_tokens",
+  "cached_tokens",
   "prompt_tokens_details",
   "completion_tokens_details",
+  "cache_read_input_tokens",
+  "cache_creation_input_tokens",
+  // Keep through sanitize → applyClientUsageBuffer so heuristic web usage is
+  // not inflated by the default USAGE_TOKEN_BUFFER (2000).
+  "estimated",
 ]);
 const ALLOWED_RESPONSES_USAGE_FIELDS = new Set([
   "input_tokens",
@@ -37,7 +49,20 @@ const ALLOWED_RESPONSES_USAGE_FIELDS = new Set([
   "input_tokens_details",
   "output_tokens_details",
   "estimated",
+  "cost_in_usd_ticks",
+  "server_side_tool_usage_details",
+  "server_side_tool_usage",
 ]);
+
+const RESPONSES_EXTRA_TOP_LEVEL_FIELDS = [
+  "server_side_tool_usage_details",
+  "server_side_tool_usage",
+  "cost_in_usd_ticks",
+  // Why the response stopped early. Dropping it leaves status:"incomplete"
+  // with no reason, so a client (and rememberResponseState) cannot tell a
+  // max_output_tokens truncation from a content_filter stop.
+  "incomplete_details",
+] as const;
 
 type JsonRecord = Record<string, unknown>;
 type ParseOptions = { parseTextualReasoningTags?: boolean };
@@ -65,7 +90,7 @@ function deleteOpenAICompatibleReasoningFields(record: JsonRecord): void {
 }
 
 function stripZeroWidthText(value: string): string {
-  return value.replace(/[\u200B-\u200D\uFEFF]/g, "");
+  return stripObfuscationZeroWidth(value);
 }
 
 function stripZeroWidthToolArgumentJson(value: unknown): string {
@@ -74,12 +99,18 @@ function stripZeroWidthToolArgumentJson(value: unknown): string {
 
 function stripZeroWidthFunctionArguments(functionCall: unknown): unknown {
   const fn = toRecord(functionCall);
-  if (!fn || typeof fn.arguments !== "string") return functionCall;
-  const stripped = stripZeroWidthText(fn.arguments);
-  // Fast path: return the original reference when there is nothing to strip, so
-  // hot streaming paths avoid a per-chunk shallow clone of every tool call.
-  if (stripped === fn.arguments) return functionCall;
-  return { ...fn, arguments: stripped };
+  if (!fn) return functionCall;
+  if (typeof fn.arguments === "string") {
+    const stripped = stripZeroWidthText(fn.arguments);
+    // Fast path: return the original reference when there is nothing to strip, so
+    // hot streaming paths avoid a per-chunk shallow clone of every tool call.
+    if (stripped === fn.arguments) return functionCall;
+    return { ...fn, arguments: stripped };
+  }
+  if (fn.arguments === null || typeof fn.arguments !== "object") return functionCall;
+  const serialized = JSON.stringify(fn.arguments);
+  if (typeof serialized !== "string") return functionCall;
+  return { ...fn, arguments: stripZeroWidthText(serialized) };
 }
 
 function stripZeroWidthToolCallArguments(toolCall: unknown): unknown {
@@ -243,6 +274,14 @@ export interface SanitizeOpenAIResponseOptions {
 }
 
 export function sanitizeOpenAIResponse(
+  body: JsonRecord,
+  options?: SanitizeOpenAIResponseOptions
+): JsonRecord;
+export function sanitizeOpenAIResponse(
+  body: unknown,
+  options?: SanitizeOpenAIResponseOptions
+): unknown;
+export function sanitizeOpenAIResponse(
   body: unknown,
   options: SanitizeOpenAIResponseOptions = {}
 ): unknown {
@@ -295,6 +334,8 @@ export function sanitizeOpenAIResponse(
   return sanitized;
 }
 
+export function sanitizeResponsesApiResponse(body: JsonRecord): JsonRecord;
+export function sanitizeResponsesApiResponse(body: unknown): unknown;
 export function sanitizeResponsesApiResponse(body: unknown): unknown {
   const bodyRecord = toRecord(body);
   if (!bodyRecord) return body;
@@ -350,6 +391,10 @@ export function sanitizeResponsesApiResponse(body: unknown): unknown {
     sanitized.usage = sanitizeResponsesUsage(responseRoot.usage);
   }
 
+  for (const key of RESPONSES_EXTRA_TOP_LEVEL_FIELDS) {
+    if (responseRoot[key] !== undefined) sanitized[key] = responseRoot[key];
+  }
+
   return sanitized;
 }
 
@@ -391,7 +436,9 @@ function sanitizeChoice(
 
 function sanitizeMessageContent(msgRecord: JsonRecord, options: ParseOptions = {}): JsonRecord {
   if (typeof msgRecord.content === "string") {
-    const strippedContent = stripInternalToolEnvelopeText(msgRecord.content);
+    const strippedContent = stripInternalReasoningPlaceholder(
+      stripInternalToolEnvelopeText(msgRecord.content)
+    );
     const nativeReasoning = getReadableReasoningValue(msgRecord);
     const { content, thinking } =
       options.parseTextualReasoningTags === true && !nativeReasoning
@@ -475,7 +522,7 @@ function sanitizeUsage(usage: unknown): unknown {
       sanitized[key] = usageRecord[key];
     }
   }
-
+  applyCacheHitTokensToUsage(usageRecord, sanitized); // DeepSeek/MiniMax/Bedrock cache-hit passthrough (#8171)
   // Ensure required fields
   const promptTokens = toNumber(sanitized.prompt_tokens) ?? 0;
   const completionTokens = toNumber(sanitized.completion_tokens) ?? 0;
@@ -513,12 +560,33 @@ function sanitizeResponsesUsage(usage: unknown): unknown {
     normalized.output_tokens_details = normalized.completion_tokens_details;
   }
 
-  const inputDetails = toRecord(normalized.input_tokens_details) || {};
+  // DeepSeek native API: map flat prompt_cache_hit_tokens into input_tokens_details
+  if (
+    normalized.prompt_cache_hit_tokens !== undefined &&
+    !(toRecord(normalized.input_tokens_details) ?? {}).cached_tokens
+  ) {
+    normalized.input_tokens_details = {
+      ...((normalized.input_tokens_details as Record<string, unknown>) || {}),
+      cached_tokens: normalized.prompt_cache_hit_tokens,
+    };
+  }
+
+  // MiniMax / Bedrock: flat cache_read_input_tokens → input_tokens_details.cached_tokens
   if (
     normalized.cache_read_input_tokens !== undefined &&
-    inputDetails.cached_tokens === undefined
+    normalized.cache_read_input_tokens !== 0 &&
+    !(toRecord(normalized.input_tokens_details) ?? {}).cached_tokens
   ) {
-    inputDetails.cached_tokens = normalized.cache_read_input_tokens;
+    normalized.input_tokens_details = {
+      ...((normalized.input_tokens_details as Record<string, unknown>) || {}),
+      cached_tokens: normalized.cache_read_input_tokens,
+    };
+  }
+
+  const inputDetails = toRecord(normalized.input_tokens_details) || {};
+  const cachedTokens = normalized.cached_tokens ?? normalized.cache_read_input_tokens;
+  if (cachedTokens !== undefined && inputDetails.cached_tokens === undefined) {
+    inputDetails.cached_tokens = cachedTokens;
   }
   if (
     normalized.cache_creation_input_tokens !== undefined &&
@@ -558,15 +626,21 @@ function sanitizeResponsesUsage(usage: unknown): unknown {
 
 /**
  * Normalize response ID to use chatcmpl- prefix.
+ * Preserves numeric/short custom ids as their string form rather than
+ * regenerating them — a passthrough numeric id (e.g. `123`) must stay `"123"`
+ * so streaming clients can correlate chunks (#3427/#5776). Only a genuinely
+ * missing/empty id gets a fresh `chatcmpl-` token.
  */
 function normalizeResponseId(id: unknown): string {
-  if (!id || typeof id !== "string") {
+  if (!id || (typeof id !== "string" && typeof id !== "number")) {
     return `chatcmpl-${crypto.randomUUID().replace(/-/g, "").slice(0, 29)}`;
   }
-  // Already correct format
-  if (id.startsWith("chatcmpl-")) return id;
-  // Keep custom IDs but don't break them
-  return id;
+  const str = String(id);
+  if (str === "") {
+    return `chatcmpl-${crypto.randomUUID().replace(/-/g, "").slice(0, 29)}`;
+  }
+  // Already correct format, or a custom/numeric id — keep it.
+  return str;
 }
 
 function normalizeResponsesId(id: unknown): string {
@@ -805,6 +879,7 @@ function sanitizeResponsesOutputItem(item: unknown, index: number): JsonRecord |
       : [];
 
     return {
+      ...itemRecord,
       id: toString(itemRecord.id) || `rs_${index}`,
       type: "reasoning",
       summary,
@@ -840,7 +915,9 @@ function sanitizeResponsesMessageContent(content: unknown): JsonRecord[] {
     return [
       {
         type: "output_text",
-        text: collapseExcessiveNewlines(stripInternalToolEnvelopeText(content)),
+        text: collapseExcessiveNewlines(
+          stripInternalReasoningPlaceholder(stripInternalToolEnvelopeText(content))
+        ),
         annotations: [],
       },
     ];
@@ -855,7 +932,9 @@ function sanitizeResponsesMessageContent(content: unknown): JsonRecord[] {
         if (typeof part === "string") {
           return {
             type: "output_text",
-            text: collapseExcessiveNewlines(stripInternalToolEnvelopeText(part)),
+            text: collapseExcessiveNewlines(
+              stripInternalReasoningPlaceholder(stripInternalToolEnvelopeText(part))
+            ),
             annotations: [],
           };
         }
@@ -872,7 +951,9 @@ function sanitizeResponsesMessageContent(content: unknown): JsonRecord[] {
           ...partRecord,
           type: "output_text",
           text: collapseExcessiveNewlines(
-            stripInternalToolEnvelopeText(toString(partRecord.text) || "")
+            stripInternalReasoningPlaceholder(
+              stripInternalToolEnvelopeText(toString(partRecord.text) || "")
+            )
           ),
           annotations: Array.isArray(partRecord.annotations) ? partRecord.annotations : [],
         };
@@ -990,6 +1071,7 @@ function convertOpenAIResponseToResponses(openaiResponse: JsonRecord): JsonRecor
 /**
  * Sanitize a streaming SSE chunk for passthrough mode.
  * Lighter than full sanitization — only strips problematic extra fields.
+ * Fast-path: returns original when no mutations are needed.
  */
 export function sanitizeStreamingChunk(parsed: unknown): unknown {
   const parsedRecord = toRecord(parsed);
@@ -998,6 +1080,41 @@ export function sanitizeStreamingChunk(parsed: unknown): unknown {
   const eventType = toString(parsedRecord.type) || "";
   if (eventType.startsWith("response.") || parsedRecord.object === "response") {
     return sanitizeResponsesStreamingEvent(parsedRecord);
+  }
+
+  // #8271: Anthropic-native streaming events (content_block_delta with
+  // text_delta / thinking_delta) bypass the OpenAI choices[].delta.content
+  // path below. Strip zero-width characters from their text payloads so
+  // U+200D and friends don't leak to the client on the Messages API.
+  if (eventType === "content_block_delta") {
+    const deltaRecord = toRecord(parsedRecord.delta);
+    if (deltaRecord) {
+      let mutated = false;
+      if (typeof deltaRecord.text === "string") {
+        deltaRecord.text = stripZeroWidthText(deltaRecord.text);
+        mutated = true;
+      }
+      if (typeof deltaRecord.thinking === "string") {
+        deltaRecord.thinking = stripZeroWidthText(deltaRecord.thinking);
+        mutated = true;
+      }
+      return mutated ? parsedRecord : parsed;
+    }
+    return parsed;
+  }
+
+  // Fast-path: check if any mutations would actually be needed
+  // Most passthrough chunks (content deltas) need no sanitization
+  const needsIdNormalization =
+    parsedRecord.id !== undefined &&
+    parsedRecord.id !== null &&
+    typeof parsedRecord.id !== "string";
+  const hasChoices = Array.isArray(parsedRecord.choices) && parsedRecord.choices.length > 0;
+  const hasUsage = parsedRecord.usage !== undefined;
+  const hasSystemFingerprint = parsedRecord.system_fingerprint !== undefined;
+  if (!needsIdNormalization && !hasChoices && !hasUsage && !hasSystemFingerprint) {
+    // Nothing to sanitize — forward original
+    return parsed;
   }
 
   // Build sanitized chunk

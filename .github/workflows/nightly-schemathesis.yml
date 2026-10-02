@@ -10,17 +10,22 @@ permissions:
 jobs:
   schemathesis:
     name: Schemathesis — OpenAPI contract fuzz (advisory)
-    runs-on: ubuntu-latest
+    # #11965: this job runs a backend-only `next build`; the hosted 7 GB runner cannot build
+    # release/v3.8.51 (VM shutdown ~7 min in), so it targets the box's light pool (`omni-light`:
+    # two listeners, jobs ≤ ~6 GB). Falls back to hosted when USE_VPS_RUNNER is off.
+    runs-on: ${{ (vars.USE_VPS_RUNNER == 'true' && fromJSON('["self-hosted","omni-light"]')) || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with: { node-version: "24", cache: npm }
       - run: npm ci
       - name: Build CLI bundle
-        env: { JWT_SECRET: ci-build-secret-with-sufficient-length-for-validation }
+        env:
+          JWT_SECRET: ci-build-secret-with-sufficient-length-for-validation
+          OMNIROUTE_BUILD_BACKEND_ONLY: "1"
         run: npm run build:cli
       - name: Start OmniRoute (background)
         env:
@@ -33,7 +38,7 @@ jobs:
             if curl -sf http://localhost:20128/api/monitoring/health >/dev/null; then echo "server up"; break; fi
             sleep 2
           done
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with: { python-version: "3.12" }
       - name: Install schemathesis
         run: pip install schemathesis

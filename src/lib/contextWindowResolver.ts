@@ -75,12 +75,19 @@ export function reconcileContextWindows(
 
 /** Flatten the per-provider discovery map into the reconcile input. */
 function toDiscoveredWindows(
-  byProvider: Record<string, Array<{ id: string; inputTokenLimit?: number }>>
+  byProvider: Record<
+    string,
+    Array<{ id: string; contextWindow?: number; inputTokenLimit?: number }>
+  >
 ): DiscoveredWindow[] {
   const out: DiscoveredWindow[] = [];
   for (const [provider, models] of Object.entries(byProvider)) {
     for (const m of models) {
-      out.push({ provider, modelId: m.id, window: m.inputTokenLimit ?? null });
+      out.push({
+        provider,
+        modelId: m.id,
+        window: m.contextWindow ?? m.inputTokenLimit ?? null,
+      });
     }
   }
   return out;
@@ -91,8 +98,12 @@ export async function runContextWindowReconcile(): Promise<ReconcileResult> {
   const byProvider = await getAllSyncedAvailableModels();
   const discovered = toDiscoveredWindows(byProvider);
   return reconcileContextWindows(discovered, {
+    // Compare against the override-free catalog view. A persisted override must
+    // never feed back into the comparison that (re)writes it, or the reconciler
+    // oscillates (write → equal → remove → differ → write ...).
     getCatalogWindow: (provider, modelId) =>
-      getResolvedModelCapabilities({ provider, model: modelId }).contextWindow,
+      getResolvedModelCapabilities({ provider, model: modelId }, { persistedOverrides: false })
+        .contextWindow,
     getExistingSource: (provider, modelId) =>
       getModelContextOverrideRecord(provider, modelId)?.source ?? null,
     writeAuto: (provider, modelId, window) => {

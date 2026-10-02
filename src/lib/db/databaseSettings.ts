@@ -37,18 +37,36 @@ const LEGACY_FLAT_KEYS: {
     semanticCacheEnabled: ["semanticCacheEnabled"],
     semanticCacheMaxSize: ["semanticCacheMaxSize"],
     semanticCacheTTL: ["semanticCacheTTL"],
+    semanticCacheVectorEnabled: ["semanticCacheVectorEnabled"],
+    semanticCacheBackend: ["semanticCacheBackend"],
+    semanticCacheThreshold: ["semanticCacheThreshold"],
+    semanticCacheEmbeddingProvider: ["semanticCacheEmbeddingProvider"],
+    semanticCacheEmbeddingModel: ["semanticCacheEmbeddingModel"],
+    semanticCacheEmbeddingDimension: ["semanticCacheEmbeddingDimension"],
+    semanticCacheEmbeddingBaseUrl: ["semanticCacheEmbeddingBaseUrl"],
+    semanticCacheEmbeddingApiKey: ["semanticCacheEmbeddingApiKey"],
+    semanticCacheRedisUrl: ["semanticCacheRedisUrl"],
+    semanticCacheRedisPrefix: ["semanticCacheRedisPrefix"],
+    semanticCacheRequireZeroTemp: ["semanticCacheRequireZeroTemp"],
     promptCacheEnabled: ["promptCacheEnabled"],
     promptCacheStrategy: ["promptCacheStrategy"],
     alwaysPreserveClientCache: ["alwaysPreserveClientCache"],
+    modelCatalogCacheTtlMs: ["modelCatalogCacheTtlMs"],
   },
   retention: {
     quotaSnapshots: ["quotaSnapshots"],
     compressionAnalytics: ["compressionAnalytics"],
     mcpAudit: ["mcpAudit"],
+    configAudit: ["configAudit"],
     a2aEvents: ["a2aEvents"],
     callLogs: ["callLogs"],
+    conversationTurnNodes: ["conversationTurnNodes"],
     usageHistory: ["usageHistory"],
     memoryEntries: ["memoryEntries"],
+    domainCostHistory: ["domainCostHistory"],
+    compressionCacheStats: ["compressionCacheStats"],
+    xpAuditLog: ["xpAuditLog"],
+    compressionRunTelemetry: ["compressionRunTelemetry"],
     autoCleanupEnabled: ["autoCleanupEnabled"],
   },
   aggregation: {
@@ -254,6 +272,8 @@ export function getDatabaseSettings(): DatabaseSettings {
         vacuumState.lastRunAt !== null ? new Date(vacuumState.lastRunAt).toISOString() : null,
       lastOptimizationAt: null,
       integrityCheck: getIntegrityCheck(),
+      autoVacuumDrift: vacuumState.autoVacuumDrift,
+      lastReclaimedPages: vacuumState.lastReclaimedPages,
     },
   };
 }
@@ -288,7 +308,7 @@ export function updateDatabaseSettings(
       const sectionValues = nextSettings[section] as Record<string, unknown>;
 
       for (const [key, value] of Object.entries(sectionValues)) {
-        insert.run(DATABASE_SETTINGS_NAMESPACE, `${section}.${key}`, JSON.stringify(value));
+        insert.run(DATABASE_SETTINGS_NAMESPACE, `${section}.${key}`, JSON.stringify(value ?? null));
       }
     }
 

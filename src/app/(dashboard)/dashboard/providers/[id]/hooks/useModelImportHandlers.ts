@@ -7,18 +7,23 @@
  * ProviderDetailPageClient:
  *  - importingModels, showImportModal, importProgress, togglingAutoSync
  *  - handleImportModels, handleCompatibleImportWithProgress, handleToggleAutoSync
- *  - canImportModels (derived), isAutoSyncEnabled (derived), autoSyncConnection (derived)
+ *  - canImportModels (derived), isAutoSyncEnabled (derived)
  *
  * Cycle-safe: imports only from leaf modules and React.
  * No import from ProviderDetailPageClient.
  */
 
 import React, { useState } from "react";
-import type { ProviderMessageTranslator } from "../providerPageHelpers";
-import { useNotificationStore } from "@/store/notificationStore";
+import { extractApiErrorMessage } from "@/shared/http/apiErrorMessage";
+import { providerText, type ProviderMessageTranslator } from "../providerPageHelpers";
 import { extractImportWarning } from "./modelImportWarning";
 
-type NotifyStore = ReturnType<typeof useNotificationStore>;
+interface NotifyStore {
+  success: (message: string, title?: string) => number;
+  error: (message: string, title?: string) => number;
+  warning: (message: string, title?: string) => number;
+  info: (message: string, title?: string) => number;
+}
 
 // ──── types ──────────────────────────────────────────────────────────────────
 
@@ -57,14 +62,16 @@ export interface UseModelImportHandlersReturn {
   showImportModal: boolean;
   importProgress: ImportProgress;
   togglingAutoSync: boolean;
+  togglingAutoFetchModels: boolean;
   canImportModels: boolean;
   isAutoSyncEnabled: boolean;
-  autoSyncConnection: UseModelImportHandlersParams["connections"][number] | undefined;
+  isAutoFetchModelsEnabled: boolean;
   setShowImportModal: (v: boolean) => void;
   setImportProgress: React.Dispatch<React.SetStateAction<ImportProgress>>;
   handleImportModels: () => Promise<void>;
   handleCompatibleImportWithProgress: (connectionId: string) => Promise<void>;
   handleToggleAutoSync: () => Promise<void>;
+  handleToggleAutoFetchModels: () => Promise<void>;
 }
 
 // ──── hook ───────────────────────────────────────────────────────────────────
@@ -96,11 +103,22 @@ export function useModelImportHandlers({
     importedCount: 0,
   });
   const [togglingAutoSync, setTogglingAutoSync] = useState(false);
+  const [togglingAutoFetchModels, setTogglingAutoFetchModels] = useState(false);
 
   // Derived
   const canImportModels = isFreeNoAuth || connections.some((conn) => conn.isActive !== false);
-  const autoSyncConnection = connections.find((conn) => conn.isActive !== false);
-  const isAutoSyncEnabled = !!(autoSyncConnection as any)?.providerSpecificData?.autoSync;
+  const activeConnections = connections.filter((conn) => conn.isActive !== false);
+  // Mixed-state semantics (design §6): the master toggle reads OFF if any active
+  // connection has autoSync off; toggling from a mixed state turns all active ON.
+  // No tri-state UI — the master toggle is a pure binary all-on switch.
+  const isAutoSyncEnabled =
+    activeConnections.length > 0 &&
+    activeConnections.every((conn) => !!conn.providerSpecificData?.autoSync);
+  // Discovery persists its response in the synced-model cache, so opt in on every
+  // active connection before treating the provider-level control as enabled.
+  const isAutoFetchModelsEnabled =
+    activeConnections.length > 0 &&
+    activeConnections.every((conn) => conn.providerSpecificData?.autoFetchModels === true);
 
   const handleImportModels = async () => {
     if (importingModels) return;
@@ -133,6 +151,9 @@ export function useModelImportHandlers({
         return;
       }
       const fetchedModels = data.models || [];
+      // Discovery persists its result even when no new models need importing.
+      // Refresh the active listing so removals take effect without a page reload.
+      await fetchProviderModelMeta();
       const importWarning = extractImportWarning(data);
       if (fetchedModels.length === 0) {
         setImportProgress((prev) => ({
@@ -187,6 +208,7 @@ export function useModelImportHandlers({
       }));
 
       let importedCount = 0;
+      const failures: string[] = [];
       for (let i = 0; i < newModels.length; i++) {
         const model = newModels[i];
         const modelId = model.id || model.name || model.model;
@@ -201,7 +223,7 @@ export function useModelImportHandlers({
           logs: [...prev.logs, t("importingModelById", { modelId })],
         }));
 
-        await fetch("/api/provider-models", {
+        const createRes = await fetch("/api/provider-models", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -213,8 +235,33 @@ export function useModelImportHandlers({
             ...(Array.isArray(model.supportedEndpoints)
               ? { supportedEndpoints: model.supportedEndpoints }
               : {}),
+            ...(typeof model.dimensions === "number" && model.dimensions > 0
+              ? { dimensions: model.dimensions }
+              : {}),
+            ...(Array.isArray(model.supportedInputTypes)
+              ? { supportedInputTypes: model.supportedInputTypes }
+              : {}),
+            ...(typeof model.modelType === "string" ? { modelType: model.modelType } : {}),
+            ...(typeof model.inputTokenLimit === "number" && model.inputTokenLimit > 0
+              ? { max_input_tokens: model.inputTokenLimit }
+              : {}),
+            ...(typeof model.targetFormat === "string" ? { targetFormat: model.targetFormat } : {}),
           }),
         });
+        // A rejected row was not stored: do not alias it or count it as imported,
+        // otherwise the dialog reports success while nothing reached the catalog.
+        if (!createRes.ok) {
+          const reason = extractApiErrorMessage(
+            await createRes.json().catch(() => null),
+            `HTTP ${createRes.status}`
+          );
+          failures.push(reason);
+          setImportProgress((prev) => ({
+            ...prev,
+            logs: [...prev.logs, `✗ ${modelId}: ${reason}`],
+          }));
+          continue;
+        }
         if (!modelAliases[baseAlias]) {
           await handleSetAlias(modelId, baseAlias, providerStorageAlias);
         }
@@ -222,6 +269,18 @@ export function useModelImportHandlers({
       }
 
       await fetchAliases();
+
+      if (importedCount === 0 && failures.length > 0) {
+        setImportProgress((prev) => ({
+          ...prev,
+          phase: "error",
+          current: newModels.length,
+          status: t("failedImportModels"),
+          error: failures[0],
+          importedCount: 0,
+        }));
+        return;
+      }
 
       setImportProgress((prev) => ({
         ...prev,
@@ -236,11 +295,15 @@ export function useModelImportHandlers({
           importedCount > 0
             ? t("importDoneCount", { count: importedCount })
             : t("noNewModelsAdded"),
+          ...(failures.length > 0 ? [t("bulkFailedCount", { count: failures.length })] : []),
         ],
         importedCount,
       }));
 
-      if (importedCount > 0) {
+      if (importedCount > 0 && failures.length > 0) {
+        // A reload would wipe the failure lines before they can be read.
+        await fetchProviderModelMeta();
+      } else if (importedCount > 0) {
         setTimeout(() => {
           window.location.reload();
         }, 2000);
@@ -288,6 +351,8 @@ export function useModelImportHandlers({
       if (!response.ok) {
         throw new Error(data.error || t("failedImportModels"));
       }
+      await fetchProviderModelMeta();
+      await fetchAliases();
 
       if (data.freeFilterEmpty) {
         setImportProgress((prev) => ({
@@ -374,26 +439,102 @@ export function useModelImportHandlers({
   };
 
   const handleToggleAutoSync = async () => {
-    if (!autoSyncConnection || togglingAutoSync) return;
+    if (togglingAutoSync) return;
+    if (activeConnections.length === 0) return;
     setTogglingAutoSync(true);
     try {
       const newValue = !isAutoSyncEnabled;
-      await fetch(`/api/providers/${(autoSyncConnection as any).id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          providerSpecificData: { autoSync: newValue },
-        }),
-      });
-      await fetchConnections();
-      notify[newValue ? "success" : "info"](
-        newValue ? t("autoSyncEnabled") : t("autoSyncDisabled")
+      const activeWithId = activeConnections.filter((conn) => conn.id);
+      if (activeWithId.length === 0) return;
+      const results = await Promise.allSettled(
+        activeWithId.map((conn) =>
+          fetch(`/api/providers/${conn.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              providerSpecificData: {
+                ...(conn.providerSpecificData || {}),
+                autoSync: newValue,
+              },
+            }),
+          })
+        )
       );
+      await fetchConnections();
+      const fulfilled = results.filter((r) => r.status === "fulfilled" && r.value.ok).length;
+      if (fulfilled === results.length) {
+        notify[newValue ? "success" : "info"](
+          newValue ? t("autoSyncEnabled") : t("autoSyncDisabled")
+        );
+      } else if (fulfilled === 0) {
+        notify.error(t("autoSyncToggleFailed"));
+      } else {
+        notify.warning(t("autoSyncPartialFailure"));
+      }
     } catch (error) {
-      console.log("Error toggling auto-sync:", error);
+      console.error("Error toggling auto-sync:", error);
       notify.error(t("autoSyncToggleFailed"));
     } finally {
       setTogglingAutoSync(false);
+    }
+  };
+
+  const handleToggleAutoFetchModels = async () => {
+    if (togglingAutoFetchModels) return;
+    const activeWithId = activeConnections.filter((conn) => conn.id);
+    if (activeWithId.length === 0) return;
+
+    setTogglingAutoFetchModels(true);
+    try {
+      const newValue = !isAutoFetchModelsEnabled;
+      const results = await Promise.allSettled(
+        activeWithId.map((conn) =>
+          fetch(`/api/providers/${conn.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              providerSpecificData: {
+                ...(conn.providerSpecificData || {}),
+                autoFetchModels: newValue,
+              },
+            }),
+          })
+        )
+      );
+      await fetchConnections();
+      const fulfilled = results.filter((result) => {
+        return result.status === "fulfilled" && result.value.ok;
+      }).length;
+      if (fulfilled === results.length) {
+        notify[newValue ? "success" : "info"](
+          newValue
+            ? providerText(t, "autoFetchModelsEnabled", "Upstream model auto-fetch enabled")
+            : providerText(t, "autoFetchModelsDisabled", "Upstream model auto-fetch disabled")
+        );
+      } else if (fulfilled === 0) {
+        notify.error(
+          providerText(
+            t,
+            "autoFetchModelsToggleFailed",
+            "Failed to toggle upstream model auto-fetch"
+          )
+        );
+      } else {
+        notify.warning(
+          providerText(
+            t,
+            "autoFetchModelsPartialFailure",
+            "Some connections updated, but upstream model auto-fetch was not changed everywhere"
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error toggling upstream model auto-fetch:", error);
+      notify.error(
+        providerText(t, "autoFetchModelsToggleFailed", "Failed to toggle upstream model auto-fetch")
+      );
+    } finally {
+      setTogglingAutoFetchModels(false);
     }
   };
 
@@ -402,13 +543,15 @@ export function useModelImportHandlers({
     showImportModal,
     importProgress,
     togglingAutoSync,
+    togglingAutoFetchModels,
     canImportModels,
     isAutoSyncEnabled,
-    autoSyncConnection,
+    isAutoFetchModelsEnabled,
     setShowImportModal,
     setImportProgress,
     handleImportModels,
     handleCompatibleImportWithProgress,
     handleToggleAutoSync,
+    handleToggleAutoFetchModels,
   };
 }

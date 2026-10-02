@@ -28,7 +28,7 @@ async function resetStorage() {
   readCacheDb.invalidateDbCache();
   await new Promise((resolve) => setTimeout(resolve, 20));
   core.resetDbInstance();
-  fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+  fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
 }
 
@@ -40,7 +40,7 @@ test.after(async () => {
   globalThis.fetch = originalFetch;
   core.closeDbInstance();
   try {
-    fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   } catch {}
 });
 
@@ -167,23 +167,28 @@ test("chatCore integration: disabled prompt compression leaves combo override re
     },
   });
 
+  // Body stays BELOW the reactive-compaction threshold (70% of the window): #8595/#8560
+  // decoupled REACTIVE compaction from the `enabled` switch, so a larger body is legitimately
+  // pruned even with compression off. Under test here: `enabled: false` makes resolveBasePlan()
+  // (compression/strategySelector.ts) return mode "off" before it ever reads comboOverrides.
   const body = {
     model: "combo/disabled-compression-combo",
     stream: false,
     messages: [
       { role: "system", content: "You are helpful." },
-      { role: "user", content: `${"Keep   spacing.\n\n\n".repeat(2000)}First long turn.` },
+      { role: "user", content: `${"Keep   spacing.\n\n\n".repeat(300)}First long turn.` },
       { role: "assistant", content: "Response 1" },
-      { role: "user", content: `${"Keep   spacing.\n\n\n".repeat(2000)}Second long turn.` },
+      { role: "user", content: `${"Keep   spacing.\n\n\n".repeat(300)}Second long turn.` },
       { role: "assistant", content: "Response 2" },
-      { role: "user", content: `${"Keep   spacing.\n\n\n".repeat(2000)}Final question.` },
+      { role: "user", content: `${"Keep   spacing.\n\n\n".repeat(300)}Final question.` },
     ],
   };
   const contextLimit = getTokenLimit(provider, model);
   const proactiveThreshold = Math.floor(contextLimit * 0.7);
+  const estimatedBodyTokens = estimateTokens(JSON.stringify(body.messages));
   assert.ok(
-    estimateTokens(JSON.stringify(body.messages)) > proactiveThreshold,
-    "Test body should exceed proactive compression threshold"
+    estimatedBodyTokens > 0 && estimatedBodyTokens < proactiveThreshold,
+    `Body tokens must stay below the reactive-compaction threshold (${proactiveThreshold}): ${estimatedBodyTokens}`
   );
 
   let capturedBody: { messages?: Array<{ role?: string; content?: string }> } | null = null;
@@ -570,8 +575,7 @@ test("chatCore integration: combo requests run proactive compression before Kiro
 
     // Ensure request was translated to Kiro shape (messages are not sent directly upstream).
     const conversationState = capturedTranslatedBody?.conversationState as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     assert.ok(conversationState, "Kiro translated request should include conversationState");
 
     const history = Array.isArray(conversationState?.history)
@@ -584,8 +588,7 @@ test("chatCore integration: combo requests run proactive compression before Kiro
 
     const currentMessage = conversationState?.currentMessage as Record<string, unknown> | undefined;
     const userInputMessage = currentMessage?.userInputMessage as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const currentContent =
       typeof userInputMessage?.content === "string" ? userInputMessage.content : "";
     assert.match(currentContent, /Please summarize everything\./);
@@ -608,10 +611,12 @@ test("chatCore integration: assigned compression combo applies language packs an
       autoClarity: true,
     },
     languageConfig: {
-      enabled: false,
-      defaultLanguage: "en",
-      autoDetect: true,
-      enabledPacks: ["en"],
+      enabled: true,
+      // autoDetect would read the (English) user turn and resolve back to "en",
+      // so the pack under test has to be pinned explicitly.
+      autoDetect: false,
+      defaultLanguage: "pt-BR",
+      enabledPacks: ["pt-BR"],
     },
   });
 
@@ -685,10 +690,12 @@ test("chatCore integration: assigned compression combo applies language packs an
 
     assert.ok(result.success, "Request should succeed");
     assert.ok(capturedBody, "Fetch should receive the request body");
-    const firstMessage = capturedBody.messages?.[0];
-    assert.equal(firstMessage?.role, "system");
-    assert.match(firstMessage?.content ?? "", /OmniRoute Output Styles/);
-    assert.match(firstMessage?.content ?? "", /Responda conciso/);
+    // #13383: injection must preserve the initial user turn for Anthropic compatibility.
+    assert.equal(capturedBody.messages?.[0]?.role, "user");
+    const styleMessage = capturedBody.messages?.at(-1);
+    assert.equal(styleMessage?.role, "system");
+    assert.match(styleMessage?.content ?? "", /OmniRoute Output Styles/);
+    assert.match(styleMessage?.content ?? "", /Responda conciso/);
 
     for (
       let attempt = 0;
@@ -716,10 +723,12 @@ test("chatCore integration: default stacked compression combo applies for unassi
       autoClarity: true,
     },
     languageConfig: {
-      enabled: false,
-      defaultLanguage: "en",
-      autoDetect: true,
-      enabledPacks: ["en"],
+      enabled: true,
+      // autoDetect would read the (English) user turn and resolve back to "en",
+      // so the pack under test has to be pinned explicitly.
+      autoDetect: false,
+      defaultLanguage: "pt-BR",
+      enabledPacks: ["pt-BR"],
     },
   });
 
@@ -780,10 +789,11 @@ test("chatCore integration: default stacked compression combo applies for unassi
 
     assert.ok(result.success, "Request should succeed");
     assert.ok(capturedBody, "Fetch should receive the request body");
-    const firstMessage = capturedBody.messages?.[0];
-    assert.equal(firstMessage?.role, "system");
-    assert.match(firstMessage?.content ?? "", /OmniRoute Output Styles/);
-    assert.match(firstMessage?.content ?? "", /Responda conciso/);
+    assert.equal(capturedBody.messages?.[0]?.role, "user");
+    const styleMessage = capturedBody.messages?.at(-1);
+    assert.equal(styleMessage?.role, "system");
+    assert.match(styleMessage?.content ?? "", /OmniRoute Output Styles/);
+    assert.match(styleMessage?.content ?? "", /Responda conciso/);
 
     let summary = compressionAnalyticsDb.getCompressionAnalyticsSummary();
     for (
@@ -1102,9 +1112,102 @@ test("chatCore integration: caveman output mode injected when both compression a
     });
 
     assert.ok(result.success, "Request should succeed");
-    assert.equal(capturedBody.messages[0].role, "system");
-    assert.match(capturedBody.messages[0].content ?? "", /Output Styles/);
+    assert.equal(capturedBody.messages[0].role, "user");
+    assert.equal(capturedBody.messages.at(-1).role, "system");
+    assert.match(capturedBody.messages.at(-1).content ?? "", /Output Styles/);
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+async function styleInstructionReachesUpstream(
+  autoClarity: boolean,
+  outputStyles?: Array<{ id: string; level: "lite" | "full" | "ultra" }>
+) {
+  const provider = "openai";
+  const model = "gpt-4";
+
+  await compressionDb.updateCompressionSettings({
+    enabled: true,
+    defaultMode: "off",
+    autoTriggerTokens: 0,
+    ...(outputStyles ? { outputStyles } : {}),
+    cavemanOutputMode: {
+      enabled: !outputStyles,
+      intensity: "full",
+      autoClarity,
+    },
+  });
+
+  const connection = await providersDb.createProviderConnection({
+    provider,
+    apiKey: "test-key",
+    isActive: true,
+  });
+
+  let capturedBody = null as { messages?: Array<{ role?: string; content?: string }> } | null;
+  globalThis.fetch = async (_url: string | URL | Request, init?: RequestInit) => {
+    if (init?.body) {
+      capturedBody = JSON.parse(init.body as string);
+    }
+    return new Response(
+      JSON.stringify({
+        choices: [{ message: { role: "assistant", content: "ok" } }],
+        usage: { prompt_tokens: 20, completion_tokens: 4, total_tokens: 24 },
+      }),
+      {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }
+    );
+  };
+
+  try {
+    const result = await handleChatCore({
+      body: {
+        model,
+        stream: false,
+        messages: [{ role: "user", content: "Explain this security vulnerability in detail." }],
+      },
+      modelInfo: { provider, model },
+      credentials: { apiKey: "test-key" },
+      log: { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} },
+      clientRawRequest: { endpoint: "/v1/chat/completions", headers: new Map() },
+      connectionId: connection.id,
+      onCredentialsRefreshed: () => {},
+      onRequestSuccess: () => {},
+      onStreamFailure: () => {},
+      onDisconnect: () => {},
+      userAgent: "test-agent",
+      comboName: null,
+    });
+
+    assert.ok(result.success, "Request should succeed");
+    assert.ok(capturedBody, "the upstream request was captured");
+    return (
+      capturedBody.messages?.some(
+        (message) => message.role === "system" && /Output Styles/.test(message.content ?? "")
+      ) ?? false
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+test("chatCore integration: output styles stay on a security-topic turn when Auto-Clarity is off", async () => {
+  assert.equal(await styleInstructionReachesUpstream(false), true);
+});
+
+test("chatCore integration: Auto-Clarity on keeps output styles off a security-topic turn", async () => {
+  assert.equal(await styleInstructionReachesUpstream(true), false);
+});
+
+test("chatCore integration: styles picked in the Output Styles panel stay on a security-topic turn when Auto-Clarity is off", async () => {
+  assert.equal(
+    await styleInstructionReachesUpstream(false, [
+      { id: "terse-prose", level: "full" },
+      { id: "less-code", level: "full" },
+    ]),
+    true
+  );
 });

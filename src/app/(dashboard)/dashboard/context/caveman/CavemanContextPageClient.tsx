@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SegmentedControl } from "@/shared/components";
 import CompressionSettingsTab from "@/app/(dashboard)/dashboard/settings/components/CompressionSettingsTab";
+import { outputStyleLanguages } from "../../../../../../open-sse/services/compression/outputStyles/catalog.ts";
 
 type AnalyticsSummary = {
   totalRequests: number;
@@ -125,6 +126,12 @@ export default function CavemanContextPageClient() {
   ];
   const previewPrompt = `[OmniRoute Caveman Output Mode]\n${t(`preview.${outputMode.intensity}`)}`;
 
+  // Rule packs drive the input engines; output styles can instruct in more
+  // languages (e.g. vi has no pack). The default-language selector offers both.
+  const languageOptions = [
+    ...new Set([...languagePacks.map((pack) => pack.language), ...outputStyleLanguages()]),
+  ].sort();
+
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <header className="flex flex-col gap-2">
@@ -186,9 +193,9 @@ export default function CavemanContextPageClient() {
             onChange={(event) => updateLanguageConfig({ defaultLanguage: event.target.value })}
             className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
           >
-            {languagePacks.map((pack) => (
-              <option key={pack.language} value={pack.language}>
-                {pack.language}
+            {languageOptions.map((lang) => (
+              <option key={lang} value={lang}>
+                {lang}
               </option>
             ))}
           </select>
@@ -216,10 +223,7 @@ export default function CavemanContextPageClient() {
       {!masterEnabled && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300 flex items-start gap-2">
           <span className="material-symbols-outlined text-[18px]">info</span>
-          <p>
-            Token Saver master switch is OFF — these settings will not affect requests until you
-            turn it on from Compression Settings or change it here.
-          </p>
+          <p>{t("masterDisabledWarning")}</p>
         </div>
       )}
 

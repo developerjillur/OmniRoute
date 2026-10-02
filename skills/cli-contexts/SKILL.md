@@ -304,6 +304,7 @@ Export contexts to JSON
 
 - `--out <path>`
 - `--no-secrets`
+- `--include-secrets`
 
 **Example:**
 
@@ -323,6 +324,20 @@ Import contexts from a JSON file
 
 ```bash
 omniroute contexts import <file>
+```
+
+### `contexts migrate`
+
+Move legacy plaintext context credentials to the OS keychain
+
+**Flags:**
+
+- `--yes`
+
+**Example:**
+
+```bash
+omniroute contexts migrate
 ```
 
 ### `sessions`

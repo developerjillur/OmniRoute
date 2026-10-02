@@ -54,8 +54,6 @@ test("Claude -> OpenAI maps system blocks, parameters, tool declarations and too
   });
 });
 
-
-
 test("Claude -> OpenAI maps Claude server WebSearch to native Responses web_search", () => {
   const result = claudeToOpenAIRequest(
     "gpt-5.5",
@@ -318,7 +316,7 @@ test("Claude -> OpenAI converts tool_result blocks into tool messages and preser
                 { type: "text", text: "20C" },
                 {
                   type: "image",
-                  source: { type: "url", url: "https://example.com/ignored.png" },
+                  source: { type: "url", url: "https://example.com/chart.png" },
                 },
               ],
             },
@@ -339,9 +337,14 @@ test("Claude -> OpenAI converts tool_result blocks into tool messages and preser
     tool_call_id: "tu_1",
     content: "20C",
   });
+  // The URL image is lifted into the trailing user turn, as a base64 one already was:
+  // OpenAI `tool` messages cannot carry images.
   assert.deepEqual(result.messages[2], {
     role: "user",
-    content: "Thanks",
+    content: [
+      { type: "image_url", image_url: { url: "https://example.com/chart.png" } },
+      { type: "text", text: "Thanks" },
+    ],
   });
 });
 
@@ -408,7 +411,7 @@ test("Claude -> OpenAI maps thinking.budget_tokens to reasoning_effort buckets",
   }
 });
 
-test("Claude -> OpenAI normalizes output_config.effort=max to xhigh", () => {
+test("Claude -> OpenAI passes output_config.effort=max through verbatim", () => {
   const result = claudeToOpenAIRequest(
     "gpt-5",
     {
@@ -418,7 +421,7 @@ test("Claude -> OpenAI normalizes output_config.effort=max to xhigh", () => {
     false
   );
 
-  assert.equal(result.reasoning_effort, "xhigh");
+  assert.equal(result.reasoning_effort, "max");
 });
 
 test("Claude -> OpenAI ignores disabled thinking and leaves reasoning_effort unset", () => {
@@ -476,4 +479,15 @@ test("Claude -> OpenAI handles redacted thinking, empty arrays and unknown block
     content: "",
   });
   assert.equal(result.messages.length, 2);
+});
+
+test("Claude -> OpenAI keeps tool_choice none instead of widening it to auto", () => {
+  const body = (toolChoice: unknown) => ({
+    messages: [{ role: "user", content: [{ type: "text", text: "Just answer in text" }] }],
+    tools: [{ name: "weather", description: "Weather", input_schema: { type: "object" } }],
+    tool_choice: toolChoice,
+  });
+
+  assert.equal(claudeToOpenAIRequest("gpt-4o", body({ type: "none" }), false).tool_choice, "none");
+  assert.equal(claudeToOpenAIRequest("gpt-4o", body({ type: "auto" }), false).tool_choice, "auto");
 });

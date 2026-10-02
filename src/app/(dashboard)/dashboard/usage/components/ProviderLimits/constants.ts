@@ -15,6 +15,10 @@ export const PROVIDER_LABEL: Record<string, string> = {
   "minimax-cn": "MiniMax CN",
   nanogpt: "NanoGPT",
   deepseek: "DeepSeek",
+  "xai-oauth": "xAI OAuth (Grok)",
+  "grok-cli": "Grok Build",
+  llmgateway: "LLM Gateway",
+  lyceum: "Lyceum",
 };
 
 export const PROVIDER_ORDER: Record<string, number> = {
@@ -32,6 +36,10 @@ export const PROVIDER_ORDER: Record<string, number> = {
   minimax: 13,
   "minimax-cn": 14,
   nanogpt: 15,
+  "xai-oauth": 16,
+  "grok-cli": 17,
+  llmgateway: 18,
+  lyceum: 19,
 };
 
 export const TIER_FILTERS = [

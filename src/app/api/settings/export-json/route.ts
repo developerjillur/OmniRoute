@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import {
-  getSettings,
-  getProviderConnections,
-  getProviderNodes,
-  getCombos,
-  getApiKeys,
-} from "@/lib/localDb";
+import { getSettings } from "@/lib/db/settings";
+import { getProviderConnections } from "@/lib/db/providers";
+import { getCachedProviderNodes } from "@/lib/db/readCache";
+import { getCombos } from "@/lib/db/combos";
+import { getApiKeys } from "@/lib/db/apiKeys";
 import { isAuthRequired, isAuthenticated } from "@/shared/utils/apiAuth";
 import {
   getAllUsageHistory,
@@ -69,15 +67,16 @@ export async function GET(request: Request) {
     const { password: _pw, requireLogin: _rl, ...safeSettings } = rawSettings;
 
     const providerConnections = await getProviderConnections();
-    const providerNodes = await getProviderNodes();
+    const providerNodes = await getCachedProviderNodes();
     const combosRaw = await getCombos();
     const apiKeys = await getApiKeys();
 
     // #6328: honor hidePaidModels at the export boundary so backup files
     // cannot silently smuggle paid model ids back in on import.
-    const combos = rawSettings.hidePaidModels === true
-      ? filterPaidComboSteps(combosRaw as Array<{ models?: unknown }>)
-      : combosRaw;
+    const combos =
+      rawSettings.hidePaidModels === true
+        ? filterPaidComboSteps(combosRaw as Array<{ models?: unknown }>)
+        : combosRaw;
 
     const exportData: Record<string, unknown> = {
       settings: safeSettings,

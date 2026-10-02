@@ -15,9 +15,8 @@ import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/error";
  * Security: Requires admin authentication.
  */
 export async function GET(request: NextRequest) {
-  if (!(await isAuthenticated(request))) {
+  if (!(await isAuthenticated(request)))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   try {
     if (!SQLITE_FILE) {
@@ -29,23 +28,28 @@ export async function GET(request: NextRequest) {
 
     const db = getDbInstance();
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const tempDir = path.join(os.tmpdir(), `omniroute-export-${timestamp}`);
+    // Use mkdtempSync (exclusive creation, random suffix) instead of a
+    // deterministic timestamp path — a predictable path lets a local
+    // attacker pre-place a symlink and redirect the write (TOCTOU).
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "omniroute-export-"));
     const zipPath = path.join(os.tmpdir(), `omniroute-full-backup-${timestamp}.zip`);
 
     try {
-      // Create temp directory
-      fs.mkdirSync(tempDir, { recursive: true });
-
       // 1. Export database using native backup API
       const dbBackupPath = path.join(tempDir, "storage.sqlite");
       await db.backup(dbBackupPath);
 
       // 2–5. Export settings, combos, provider connections, API keys (via db module)
-      const { settings, combos, providers, apiKeys } = exportAllSummaryRows();
+      const { settings, combos, providers, apiKeys, reasoningRoutingRules } =
+        exportAllSummaryRows();
       fs.writeFileSync(path.join(tempDir, "settings.json"), JSON.stringify(settings, null, 2));
       fs.writeFileSync(path.join(tempDir, "combos.json"), JSON.stringify(combos, null, 2));
       fs.writeFileSync(path.join(tempDir, "providers.json"), JSON.stringify(providers, null, 2));
       fs.writeFileSync(path.join(tempDir, "api-keys.json"), JSON.stringify(apiKeys, null, 2));
+      fs.writeFileSync(
+        path.join(tempDir, "reasoning-routing-rules.json"),
+        JSON.stringify(reasoningRoutingRules, null, 2)
+      );
 
       // 6. Export call log artifacts directory
       if (CALL_LOGS_DIR && fs.existsSync(CALL_LOGS_DIR)) {
@@ -63,6 +67,7 @@ export async function GET(request: NextRequest) {
           "combos.json - Combo configurations",
           "providers.json - Provider connections (no credentials)",
           "api-keys.json - API key metadata (masked)",
+          "reasoning-routing-rules.json - Reasoning routing policies",
           "call_logs/ - Detailed call log artifacts",
         ],
       };

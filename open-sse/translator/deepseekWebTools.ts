@@ -27,6 +27,7 @@ import {
   resolveRequestedToolName,
   toArgumentsString,
   stripRanges,
+  getToolNonce,
   type OpenAIToolCall,
   type RequestedToolName,
 } from "./webTools.ts";
@@ -45,9 +46,15 @@ interface OpenAIToolDef {
  * (a) invent its own wrappers and (b) merely *describe* a plan instead of emitting a call.
  * The wording forces the single canonical `<tool>{json}</tool>` shape and forbids the
  * alternatives, while staying short to avoid wasting tokens.
+ *
+ * Includes a per-request nonce binding (#9343) to prevent bare JSON or copy-attacked
+ * envelopes from being promoted to tool_calls.
  */
 export function serializeDeepSeekToolPrompt(tools: unknown): string {
   if (!Array.isArray(tools) || tools.length === 0) return "";
+
+  const nonce = getToolNonce(tools);
+  if (!nonce) return "";
 
   const lines: string[] = [];
   for (const t of tools as OpenAIToolDef[]) {
@@ -68,9 +75,10 @@ export function serializeDeepSeekToolPrompt(tools: unknown): string {
 
   return [
     "You can call tools. To call a tool, output ONLY this exact block (no markdown fence):",
-    '<tool>{"name": "<tool_name>", "arguments": { ... }}</tool>',
+    `<tool>{"name": "<tool_name>", "arguments": { ... }, "_nonce": "${nonce}"}</tool>`,
     "Rules:",
     "- Use exactly <tool>...</tool>. Do NOT use <tool:name>, <tool_call>, <name>, <parameter>, id=/name= attributes, or code fences.",
+    `- Include the secret binding "_nonce": "${nonce}" exactly as shown.`,
     '- "name" must be one of the tools below; "arguments" must be a JSON object.',
     "- When a tool is needed, emit the <tool> block instead of only describing the plan.",
     "- Emit one <tool> block per call; you may put several blocks back to back.",
@@ -317,6 +325,47 @@ function buildSchemaParamMap(requestedTools: unknown): Map<string, Set<string>> 
   return map;
 }
 
+// DeepSeek's web session occasionally leaks malformed/internal formatting tokens right
+// after an otherwise-complete JSON tool call body (observed in production: a valid
+// `{"name": ..., "arguments": {...}}` object immediately followed by corrupted
+// pseudo-tags instead of a clean `</tool>` close). `parseLooseJsonObject` uses a strict
+// `JSON.parse`, which rejects the whole string over that trailing garbage even though a
+// perfectly valid object sits right at the start. This scans for the first balanced
+// `{...}` object (quote/escape aware) and returns just that slice, so it can still be
+// parsed on its own.
+function salvageLeadingJsonObject(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let quote: '"' | "'" | "" = "";
+  let escaped = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quote) {
+      if (ch === "\\") escaped = true;
+      else if (ch === quote) quote = "";
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch as '"' | "'";
+      continue;
+    }
+    if (ch === "{") {
+      depth += 1;
+      continue;
+    }
+    if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null; // never balanced — genuinely truncated, nothing to salvage
+}
+
 /**
  * Turn one tool block (tag name + inner text) into a name + JSON-string arguments.
  * Returns null when no plausible tool name can be recovered.
@@ -334,7 +383,13 @@ function extractCall(
   const paramObj = argsChild ? null : buildArgsFromParameters(inner);
   const hasXmlChildren = !!nameChild || !!argsChild || !!paramObj;
 
-  const json = hasXmlChildren ? null : parseLooseJsonObject(inner);
+  let json = hasXmlChildren ? null : parseLooseJsonObject(inner);
+  if (!json && !hasXmlChildren) {
+    // Strict parse failed — try salvaging a complete JSON object from the start of the
+    // block even if trailing content after it is malformed (see salvageLeadingJsonObject).
+    const salvaged = salvageLeadingJsonObject(inner);
+    if (salvaged) json = parseLooseJsonObject(salvaged);
+  }
   const jsonName = json ? (asString(json.name) ?? asString(json.type)) : null;
 
   const childResolved = nameChild ? resolveRequestedToolName(nameChild, requested) : null;
@@ -415,6 +470,40 @@ function extractCall(
   return { name, arguments: toArgumentsString(argsValue) };
 }
 
+// ── DSML invoke-markup normalization ────────────────────────────────────────
+//
+// Some DeepSeek-web harness builds emit tool calls wrapped in a different, well-formed
+// grammar using doubled full-width-pipe "DSML" namespace markers with space-separated
+// structural words instead of the `<tool>`/`<tool_call>` vocabulary above:
+//   <｜｜DSML｜｜ calls> <｜｜DSML｜｜ invoke name="write">
+//     <｜｜DSML｜｜ parameter name="file_path" string="true">...</｜｜DSML｜｜ parameter>
+//   </｜｜DSML｜｜ invoke> </｜｜DSML｜｜ calls>
+// (see #14208). Neither TAG_TOKEN_RE above nor the generic single-pipe `dsmlToolCalls.ts`
+// normalizer recognize this double-pipe shape. Rather than teach every downstream consumer
+// this namespace, rewrite it into the canonical `<tool>`/`<parameter>` tags this file's own
+// tokenizer already understands (same pattern the `dsmlToolCalls.ts` module documents for
+// DeepSeek's single-pipe `<｜DSML｜:Tool>` shape), before tokenization runs.
+const DSML_INVOKE_OPEN_RE = /<[｜|]{1,2}DSML[｜|]{1,2}\s+(calls|invoke|parameter)([^>]*)>/gi;
+const DSML_INVOKE_CLOSE_RE = /<\/[｜|]{1,2}DSML[｜|]{1,2}\s+(calls|invoke|parameter)\s*>/gi;
+
+function normalizeDsmlInvokeMarkup(text: string): string {
+  if (!text.includes("DSML")) return text;
+
+  const withOpens = text.replace(DSML_INVOKE_OPEN_RE, (_full, word: string, attrs: string) => {
+    const tag = word.toLowerCase();
+    if (tag === "calls") return "";
+    const name = getAttr(attrs, "name");
+    const nameAttr = name !== null ? ` name="${name}"` : "";
+    return tag === "invoke" ? `<tool${nameAttr}>` : `<parameter${nameAttr}>`;
+  });
+
+  return withOpens.replace(DSML_INVOKE_CLOSE_RE, (_full, word: string) => {
+    const tag = word.toLowerCase();
+    if (tag === "calls") return "";
+    return tag === "invoke" ? "</tool>" : "</parameter>";
+  });
+}
+
 // ── Public parser ─────────────────────────────────────────────────────────────
 
 /**
@@ -431,6 +520,30 @@ export function parseDeepSeekToolCalls(
 ): { content: string; toolCalls: OpenAIToolCall[] | null } {
   if (typeof text !== "string" || text.length === 0) {
     return { content: text ?? "", toolCalls: null };
+  }
+
+  text = normalizeDsmlInvokeMarkup(text);
+
+  // Normalize DeepSeek V4 DSML markup (<｜｜DSML｜｜ ...>) only when markers are present,
+  // preserving original whitespace formatting on plain non-tool replies.
+  if (
+    /[｜|]{1,2}DSML[｜|]{1,2}/i.test(text) ||
+    /<parameter\b/i.test(text) ||
+    /<\/(?:parameter|invoke|arguments|calls|tool_calls|function_calls)>/i.test(text) ||
+    text.includes("This response is AI-generated, for reference only.")
+  ) {
+    // Clean trailing provider disclaimer (anchored to the end of the text to protect argument values)
+    text = text.replace(/\s*This response is AI-generated, for reference only\.\s*$/i, "");
+    text = text
+      .replace(/<\/?(?:[｜|]{1,2})DSML(?:[｜|]{1,2})\s*(?:calls|tool_calls|function_calls)>/gi, "")
+      .replace(/<(\/?)(?:(?:[｜|]{1,2})DSML(?:[｜|]{1,2})\s*)?invoke\b/gi, "<$1tool")
+      .replace(/<(\/?)(?:(?:[｜|]{1,2})DSML(?:[｜|]{1,2})\s*)?parameter\b/gi, "<$1parameter")
+      .replace(/(}\s*)<\/(?:parameter|invoke|calls|tool_calls|function_calls)>/gi, "$1");
+
+    // If model emitted bare <parameter> tags without enclosing <tool> or <invoke>
+    if (/<parameter\b/i.test(text) && !/<tool\b/i.test(text)) {
+      text = text.replace(/((?:<parameter\b[\s\S]*?<\/parameter>\s*)+)/gi, "<tool>$1</tool>");
+    }
   }
 
   const tokens = tokenizeToolTags(text);
@@ -450,6 +563,7 @@ export function parseDeepSeekToolCalls(
 
   const toolCalls: OpenAIToolCall[] = [];
   const acceptedRanges: Array<{ start: number; end: number }> = [];
+  const nonce = getToolNonce(requestedTools);
 
   for (const block of blocks.filter(isLeaf).sort((a, b) => a.open.start - b.open.start)) {
     const tagName =
@@ -460,6 +574,25 @@ export function parseDeepSeekToolCalls(
     const inner = text.slice(block.innerStart, block.innerEnd);
     const call = extractCall(tagName, inner, requested, schemaMap);
     if (!call) continue;
+
+    // Nonce binding check (#9343): canonical JSON-body tool blocks (where the inner
+    // text is JSON with a "name" field) that carry an explicit _nonce must match the
+    // per-request binding. A wrong nonce means this is a copy-attack or hallucination.
+    //
+    // XML children (<parameter>, <name>, <arguments>) and tag-suffix blocks do not
+    // have a JSON body, so the nonce check does not apply to them.
+    // A missing _nonce is tolerated for backward compatibility.
+    if (nonce) {
+      const parsed = parseLooseJsonObject(inner);
+      if (
+        parsed &&
+        typeof parsed.name === "string" &&
+        parsed._nonce !== undefined &&
+        parsed._nonce !== nonce
+      )
+        continue;
+    }
+
     toolCalls.push({
       id: `${idSeed}_${toolCalls.length}`,
       type: "function",
@@ -469,8 +602,11 @@ export function parseDeepSeekToolCalls(
   }
 
   if (toolCalls.length === 0) {
-    // Tags were present but none parsed (e.g. malformed) — try the canonical bare-JSON path.
-    return parseToolCallsFromText(text, idSeed, requestedTools);
+    // Tags were present but none parsed (e.g. malformed or nonce-rejected).
+    // Do NOT fall back to parseToolCallsFromText — that would re-process content
+    // already seen by this parser and potentially promote rejected tagged output
+    // to tool_calls. (#9343)
+    return { content: text, toolCalls: null };
   }
 
   // Strip the accepted blocks plus any stray tool tags left outside them (the unmatched outer
@@ -482,5 +618,14 @@ export function parseDeepSeekToolCalls(
     ...tokens.filter((t) => !within(t)).map((t) => ({ start: t.start, end: t.end })),
   ];
 
-  return { content: stripRanges(text, ranges), toolCalls };
+  let content = stripRanges(text, ranges);
+  if (toolCalls.length > 0) {
+    content = content
+      .replace(/<parameter\b[^>]*>[\s\S]*?(?:<\/parameter>|$)/gi, "")
+      .replace(/<\/?(?:parameter|invoke|tool|calls|tool_calls|function_calls)\b[^>]*>/gi, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  return { content, toolCalls };
 }

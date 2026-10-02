@@ -70,9 +70,29 @@ async function unwrapQoderEnvelope(response: Response): Promise<Response> {
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  const peekedChunks: Uint8Array[] = [];
+  let peekedText = "";
+  let peekedBytes = 0;
+  let reachedEnd = false;
 
-  const { done, value } = await reader.read();
-  if (done) {
+  while (peekedBytes < 64 * 1024) {
+    const { done, value } = await reader.read();
+    if (done) {
+      reachedEnd = true;
+      peekedText += decoder.decode();
+      break;
+    }
+
+    peekedChunks.push(value);
+    peekedBytes += value.byteLength;
+    peekedText += decoder.decode(value, { stream: true });
+
+    if (peekedText.includes("\n\n") || peekedText.includes("\r\n\r\n")) {
+      break;
+    }
+  }
+
+  if (peekedChunks.length === 0 && reachedEnd) {
     reader.cancel();
     return new Response(
       JSON.stringify({ error: { message: "[qoder] empty response", type: "provider_error" } }),
@@ -80,11 +100,9 @@ async function unwrapQoderEnvelope(response: Response): Promise<Response> {
     );
   }
 
-  const text = decoder.decode(value, { stream: true });
-
   let errorStatus: number | null = null;
   let errorMsg = "";
-  for (const line of text.split("\n")) {
+  for (const line of peekedText.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed.startsWith("data:")) continue;
     const jsonStr = trimmed.slice(5).trim();
@@ -119,11 +137,13 @@ async function unwrapQoderEnvelope(response: Response): Promise<Response> {
     );
   }
 
-  // Re-create the stream with the first chunk prepended so the success body
-  // passes through unchanged.
+  // Re-create the stream with every peeked chunk prepended so the success body
+  // passes through byte-for-byte unchanged.
   const restStream = new ReadableStream<Uint8Array>({
     start(controller) {
-      controller.enqueue(value);
+      for (const chunk of peekedChunks) {
+        controller.enqueue(chunk);
+      }
     },
     pull(controller) {
       return reader.read().then(({ done, value }) => {
@@ -208,7 +228,7 @@ export class QoderExecutor extends BaseExecutor {
       };
     }
 
-    const resolvedModel = model || "qwen3-coder-plus";
+    const resolvedModel = model || "qwen3.8-max-preview";
 
     // Detect token type: PAT (Personal Access Token) starts with "pt-".
     // PATs are driven through the local qodercli binary (see executeViaQoderCli);
@@ -372,8 +392,16 @@ export class QoderExecutor extends BaseExecutor {
 
     const { text, isError, errorMessage } = parseQoderCliResult(run.stdout);
     if (isError) {
+      // When qodercli exits 0 but returns is_error=true with an empty result,
+      // the real upstream error is almost always on stderr. Surface it instead
+      // of the generic "qodercli returned an error" fallback (#9319).
+      let effectiveError = errorMessage;
+      if (errorMessage === "qodercli returned an error" && run.stderr.trim()) {
+        const stderrTrimmed = run.stderr.trim().slice(0, 300);
+        effectiveError = `qodercli returned an error: ${stderrTrimmed}`;
+      }
       return {
-        response: createQoderErrorResponse(parseQoderCliFailure(errorMessage)),
+        response: createQoderErrorResponse(parseQoderCliFailure(effectiveError)),
         url,
         headers: {},
         transformedBody: body,

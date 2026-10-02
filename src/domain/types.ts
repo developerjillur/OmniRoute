@@ -8,7 +8,7 @@
  */
 
 /**
- * @typedef {'openai'|'claude'|'gemini'|'codex'|'qwen'|'deepseek'|'cohere'|'groq'|'blackbox'|'mistral'|'openrouter'} ProviderId
+ * @typedef {'openai'|'claude'|'gemini'|'codex'|'deepseek'|'cohere'|'groq'|'blackbox'|'mistral'|'openrouter'} ProviderId
  */
 
 /**
@@ -30,6 +30,7 @@
  * @property {boolean} [rateLimitProtection] - Whether rate limit protection is enabled
  * @property {object} [rateLimitOverrides] - Per-connection rate limit overrides
  * @property {number} [rateLimitOverrides.rpm] - Requests per minute limit
+ * @property {number} [rateLimitOverrides.rpd] - Requests per day limit
  * @property {number} [rateLimitOverrides.tpm] - Tokens per minute limit
  * @property {number} [rateLimitOverrides.tpd] - Tokens per day limit
  * @property {number} [rateLimitOverrides.minTime] - Minimum ms between requests

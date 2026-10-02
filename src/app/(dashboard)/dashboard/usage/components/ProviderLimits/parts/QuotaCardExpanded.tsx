@@ -1,17 +1,32 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { buildGrokBillingCardRows } from "@/shared/utils/grokBilling";
+import { buildKimiBillingCardRows } from "@/shared/utils/kimiBilling";
+import {
+  isKimiBillingStatus,
+  isProviderBillingProvider,
+  type ProviderBillingStatus,
+} from "@/shared/utils/providerBilling";
 import {
   formatCountdown,
   formatQuotaLabel,
   getBarColor,
   getQuotaRemainingPercentage,
+  getQuotaVisibilityKey,
   shouldShowQuotaUsageCount,
 } from "../utils";
 import QuotaMiniBar from "../QuotaMiniBar";
 import { translateUsageOrFallback, type UsageTranslationValues } from "../i18nFallback";
-import { hasFixedQuotaOrder } from "../quotaParsing";
+import {
+  findKiloPassQuotaRow,
+  isKiloPassDisplayRow,
+  hasFixedQuotaOrder,
+  hasCanonicalWindowOrder,
+  sortQuotasByWindow,
+} from "../quotaParsing";
+import KiloPassMeter from "./KiloPassMeter";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$",
@@ -25,6 +40,51 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 
 const DEFAULT_VISIBLE_ROWS = 3;
 
+function ProviderBillingDetails({ billing }: { billing: ProviderBillingStatus }) {
+  const t = useTranslations("usage");
+  const locale = useLocale();
+  const rows = isKimiBillingStatus(billing)
+    ? buildKimiBillingCardRows(billing, locale, (key, fallback) =>
+        translateUsageOrFallback(t, key, fallback)
+      )
+    : buildGrokBillingCardRows(billing, locale, (key, fallback) =>
+        translateUsageOrFallback(t, key, fallback)
+      );
+
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-border/40 pt-2 text-[11px] text-text-main">
+      {rows.map((row) =>
+        row.kind === "link" ? (
+          <a
+            key={`${row.kind}-${row.label}`}
+            href={row.href}
+            target={row.target}
+            rel={row.rel}
+            className="inline-flex w-fit items-center gap-1 font-medium text-primary hover:underline"
+          >
+            {row.label}
+            <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+          </a>
+        ) : (
+          <div
+            key={`${row.kind}-${row.label}`}
+            className={`flex justify-between gap-2 ${
+              row.kind === "status" ? "items-start" : "items-center"
+            }`}
+          >
+            <span>{row.label}</span>
+            <span
+              className={`font-semibold ${row.kind === "status" ? "text-right" : "tabular-nums"}`}
+            >
+              {row.value}
+            </span>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
 /** Pure helper — sorts quotas by remaining percentage, highest first. */
 export function sortQuotasByRemaining(quotas: any[]): any[] {
   return [...quotas].sort(
@@ -34,19 +94,44 @@ export function sortQuotasByRemaining(quotas: any[]): any[] {
 
 /**
  * Pure helper — resolves the display order for a provider's quotas.
- * Providers with a deterministic fixed-window order (codex, glm family — see
- * quotaParsing.ts's sortCodexOrder()/sortGlmOrder()) keep the order
+ * Providers with a deterministic fixed-window order (Codex, GLM family,
+ * Kimi Coding — see quotaParsing.ts) keep the order
  * parseQuotaData() already established. Every other provider still gets the
  * remaining-percentage sort. Fixes #6687 (bars re-sorted by % undid the fixed
  * session/weekly order).
+ *
+ * #7764 residual: providers outside that whitelist which nonetheless report
+ * rolling time windows (claude, minimax, zai, command-code, ...) are ordered
+ * chronologically via `hasCanonicalWindowOrder`/`sortQuotasByWindow`, so the
+ * expanded card agrees with the collapsed card (`topQuotas`) and with sibling
+ * accounts of the same provider.
  */
 export function resolveQuotaDisplayOrder(providerId: string | undefined, quotas: any[]): any[] {
-  return hasFixedQuotaOrder(providerId) ? [...quotas] : sortQuotasByRemaining(quotas);
+  if (hasFixedQuotaOrder(providerId)) return [...quotas];
+  if (hasCanonicalWindowOrder(quotas)) return sortQuotasByWindow(quotas);
+  return sortQuotasByRemaining(quotas);
 }
 
 /** Pure helper — slices the sorted quotas down to the visible window. */
 export function getVisibleQuotas(sortedQuotas: any[], expanded: boolean): any[] {
   return expanded ? sortedQuotas : sortedQuotas.slice(0, DEFAULT_VISIBLE_ROWS);
+}
+
+/**
+ * Pure helper — the loading placeholder replaces the entire quota section
+ * with a spinner. Swapping rows for a spinner mid-refresh collapses the card
+ * height, which rebalances the outer CSS multi-column layout (provider groups
+ * visibly jump between columns). Only the initial load (nothing to display
+ * yet) may show the placeholder; a refresh keeps the stale rows rendered
+ * while the refresh button icon spins, and the UI updates once new data
+ * arrives.
+ */
+export function shouldShowLoadingPlaceholder(
+  loading: boolean,
+  quotaCount: number,
+  message?: string | null
+): boolean {
+  return loading && quotaCount === 0 && !message;
 }
 
 interface Props {
@@ -55,20 +140,54 @@ interface Props {
   loading: boolean;
   error: string | null;
   message?: string | null;
+  billing?: ProviderBillingStatus | null;
   refreshedAt?: string;
   hasStaleData: boolean;
   onRefresh: () => void;
   onOpenCutoff: () => void;
   onOpenCost: () => void;
-  onRedeemResetCredit?: () => void;
+  onOpenResetCredits?: () => void;
   canEditCutoff: boolean;
   hasCutoffOverrides: boolean;
   canRedeemResetCredit?: boolean;
   redeemingResetCredit?: boolean;
+  loadingResetCredits?: boolean;
+  /** Per-operator quota row visibility (upstream 9router#2371 port). */
+  hiddenQuotaRows?: any[];
+  onHideQuota?: (quota: any) => void;
+  onShowQuota?: (quota: any) => void;
 }
 
-function QuotaDetailRow({ q }: { q: any }) {
+function QuotaDetailRow({
+  q,
+  kiloPassRow = null,
+  onHideQuota,
+  onOpenResetCredits,
+  loadingResetCredits = false,
+}: {
+  q: any;
+  /** Collapsed Kilo Pass display row; present only on kilocode provider cards. */
+  kiloPassRow?: any | null;
+  onHideQuota?: (quota: any) => void;
+  onOpenResetCredits?: () => void;
+  loadingResetCredits?: boolean;
+}) {
   const t = useTranslations("usage");
+  const canHide = typeof onHideQuota === "function" && !q.isCredits && !q.isResetCredits;
+  if (isKiloPassDisplayRow(q)) {
+    return (
+      <KiloPassMeter
+        base={q.kiloPassBase ?? kiloPassRow?.kiloPassBase ?? 0}
+        bonus={q.kiloPassBonus ?? kiloPassRow?.kiloPassBonus ?? 0}
+        used={q.used}
+        total={q.total}
+        remaining={q.remaining}
+        nextBillingAt={q.resetAt ?? kiloPassRow?.resetAt ?? null}
+        balance={q.kiloPassBalance ?? null}
+      />
+    );
+  }
+
   if (q.isResetCredits) {
     const count = Number(q.creditCount ?? q.remaining ?? 0);
     const colors = getBarColor(q.remainingPercentage ?? 100);
@@ -87,12 +206,25 @@ function QuotaDetailRow({ q }: { q: any }) {
             {translateUsageOrFallback(t, "resetCreditsLabel", "Reset credits")}
           </span>
         </span>
-        <span
-          className="inline-flex h-6 shrink-0 items-center text-[12px] font-bold leading-none tabular-nums"
+        <button
+          type="button"
+          disabled={!onOpenResetCredits || loadingResetCredits}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenResetCredits?.();
+          }}
+          aria-label={translateUsageOrFallback(t, "viewResetCredits", "View reset credits")}
+          className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12px] font-bold leading-none tabular-nums hover:bg-black/[0.05] disabled:cursor-default dark:hover:bg-white/[0.05]"
           style={{ color: colors.text }}
         >
+          {loadingResetCredits && (
+            <span className="material-symbols-outlined animate-spin text-[12px]">
+              progress_activity
+            </span>
+          )}
           {count.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-        </span>
+          <span className="material-symbols-outlined text-[13px]">chevron_right</span>
+        </button>
       </div>
     );
   }
@@ -115,7 +247,9 @@ function QuotaDetailRow({ q }: { q: any }) {
               paid
             </span>
           </span>
-          <span className="truncate leading-none">{formatQuotaLabel(q.name) || "Credits"}</span>
+          <span className="truncate leading-none">
+            {formatQuotaLabel(q.name) || t("creditsLabel")}
+          </span>
         </span>
         <span
           className="inline-flex h-6 shrink-0 items-center text-[12px] font-bold leading-none tabular-nums"
@@ -147,6 +281,22 @@ function QuotaDetailRow({ q }: { q: any }) {
         >
           {q.unlimited ? "∞" : translateUsageOrFallback(t, "percentLeft", `${pct}% left`, { pct })}
         </span>
+        {canHide && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onHideQuota?.(q);
+            }}
+            className="inline-flex size-5 shrink-0 items-center justify-center rounded text-text-muted transition-colors hover:bg-black/5 hover:text-text-main dark:hover:bg-white/5"
+            title={translateUsageOrFallback(t, "hideQuotaRow", "Hide this quota row")}
+            aria-label={translateUsageOrFallback(t, "hideQuotaRow", "Hide this quota row")}
+          >
+            <span className="material-symbols-outlined text-[13px] leading-none">
+              visibility_off
+            </span>
+          </button>
+        )}
       </div>
       {!q.unlimited && <QuotaMiniBar percent={pct} size="sm" />}
       <div className="flex items-center justify-between gap-2 text-[10px] text-text-muted tabular-nums">
@@ -158,9 +308,11 @@ function QuotaDetailRow({ q }: { q: any }) {
           )}
         </span>
         {q.staleAfterReset ? (
-          <span title="Refreshing">⟳</span>
+          <span title={t("refreshing")}>⟳</span>
         ) : cd ? (
-          <span>⏱ reset in {cd}</span>
+          <span>
+            ⏱ {t("resetsIn")} {cd}
+          </span>
         ) : null}
       </div>
     </div>
@@ -173,16 +325,21 @@ export default function QuotaCardExpanded({
   loading,
   error,
   message,
+  billing,
   refreshedAt,
   hasStaleData,
   onRefresh,
   onOpenCutoff,
   onOpenCost,
-  onRedeemResetCredit,
+  onOpenResetCredits,
   canEditCutoff,
   hasCutoffOverrides,
   canRedeemResetCredit = false,
   redeemingResetCredit = false,
+  loadingResetCredits = false,
+  hiddenQuotaRows = [],
+  onHideQuota,
+  onShowQuota,
 }: Props) {
   const t = useTranslations("usage");
   const tr = (key: string, fallback: string, values?: UsageTranslationValues) =>
@@ -199,6 +356,10 @@ export default function QuotaCardExpanded({
   );
   const hiddenCount = sortedQuotas.length - visibleQuotas.length;
 
+  // Only Kilo Code cards host the dedicated Kilo Pass meter; the collapsed display row carries
+  // the derived meter values while balance/renewal metadata render below it.
+  const kiloPassRow = providerId === "kilocode" ? findKiloPassQuotaRow(sortedQuotas) : null;
+
   const refreshedLabel = refreshedAt
     ? new Date(refreshedAt).toLocaleTimeString([], {
         hour: "2-digit",
@@ -210,7 +371,7 @@ export default function QuotaCardExpanded({
 
   return (
     <div className="border-t border-border bg-bg-subtle/30 px-3 py-2.5 flex flex-col gap-1.5">
-      {loading ? (
+      {shouldShowLoadingPlaceholder(loading, sortedQuotas.length, message) ? (
         <div className="text-[11px] text-text-muted flex items-center gap-1.5">
           <span className="material-symbols-outlined animate-spin text-[13px]">
             progress_activity
@@ -231,12 +392,44 @@ export default function QuotaCardExpanded({
       ) : (
         <div className="flex flex-col divide-y divide-border/40">
           {visibleQuotas.map((q, i) => (
-            <QuotaDetailRow key={`${q.name}-${q.modelKey ?? ""}-${i}`} q={q} />
+            <QuotaDetailRow
+              key={`${q.name}-${q.modelKey ?? ""}-${i}`}
+              q={q}
+              kiloPassRow={kiloPassRow}
+              onHideQuota={onHideQuota}
+              onOpenResetCredits={q.isResetCredits ? onOpenResetCredits : undefined}
+              loadingResetCredits={loadingResetCredits}
+            />
           ))}
         </div>
       )}
 
-      {!loading && !error && sortedQuotas.length > DEFAULT_VISIBLE_ROWS && (
+      {isProviderBillingProvider(providerId) && billing && (
+        <ProviderBillingDetails billing={billing} />
+      )}
+
+      {hiddenQuotaRows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1 border-t border-border/40 pt-1.5 text-[10px] text-text-muted">
+          <span className="material-symbols-outlined text-[12px]">visibility_off</span>
+          <span>{tr("hiddenQuotaRowsLabel", "Hidden:")}</span>
+          {hiddenQuotaRows.map((q) => (
+            <button
+              key={getQuotaVisibilityKey(q)}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onShowQuota?.(q);
+              }}
+              className="rounded-md border border-border px-1.5 py-0.5 transition-colors hover:bg-black/5 hover:text-text-main dark:hover:bg-white/5"
+              title={translateUsageOrFallback(t, "showQuotaRow", "Show this quota row")}
+            >
+              {q.displayName || formatQuotaLabel(q.name)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!error && sortedQuotas.length > DEFAULT_VISIBLE_ROWS && (
         <button
           type="button"
           onClick={(e) => {
@@ -254,10 +447,10 @@ export default function QuotaCardExpanded({
         </button>
       )}
 
-      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/40">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-border/40">
         {refreshedLabel && (
           <span
-            className={`text-[10px] tabular-nums ${
+            className={`text-[10px] tabular-nums shrink-0 ${
               hasStaleData ? "text-amber-500" : "text-text-muted"
             }`}
             title={
@@ -269,25 +462,25 @@ export default function QuotaCardExpanded({
             {tr("updatedShort", "Updated")} {refreshedLabel}
           </span>
         )}
-        <div className="flex items-center gap-1.5 ml-auto">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 ml-auto">
           {canRedeemResetCredit && (
             <button
               type="button"
-              disabled={loading || redeemingResetCredit}
+              disabled={loading || redeemingResetCredit || loadingResetCredits}
               onClick={(e) => {
                 e.stopPropagation();
-                onRedeemResetCredit?.();
+                onOpenResetCredits?.();
               }}
-              className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md border border-primary/40 text-primary bg-bg-subtle hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md border border-primary/40 text-primary bg-bg-subtle hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <span
                 className={`material-symbols-outlined text-[12px] ${
-                  redeemingResetCredit ? "animate-spin" : ""
+                  redeemingResetCredit || loadingResetCredits ? "animate-spin" : ""
                 }`}
               >
-                {redeemingResetCredit ? "progress_activity" : "restart_alt"}
+                {redeemingResetCredit || loadingResetCredits ? "progress_activity" : "restart_alt"}
               </span>
-              {tr("redeemResetCredit", "Redeem reset")}
+              {tr("manageResetCredits", "View credits")}
             </button>
           )}
           <button
@@ -297,7 +490,7 @@ export default function QuotaCardExpanded({
               e.stopPropagation();
               onOpenCutoff();
             }}
-            className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md border bg-bg-subtle hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
+            className={`inline-flex shrink-0 items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md border bg-bg-subtle hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
               hasCutoffOverrides ? "border-primary/40 text-primary" : "border-border"
             }`}
           >
@@ -310,10 +503,10 @@ export default function QuotaCardExpanded({
               e.stopPropagation();
               onOpenCost();
             }}
-            className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md border border-border bg-bg-subtle hover:bg-black/[0.04] dark:hover:bg-white/[0.04] cursor-pointer"
+            className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md border border-border bg-bg-subtle hover:bg-black/[0.04] dark:hover:bg-white/[0.04] cursor-pointer"
           >
             <span className="material-symbols-outlined text-[12px]">bar_chart</span>
-            USD Cost
+            {t("usdCost")}
           </button>
           <button
             type="button"
@@ -322,7 +515,7 @@ export default function QuotaCardExpanded({
               e.stopPropagation();
               onRefresh();
             }}
-            className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md border border-border bg-bg-subtle hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md border border-border bg-bg-subtle hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <span
               className={`material-symbols-outlined text-[12px] ${loading ? "animate-spin" : ""}`}

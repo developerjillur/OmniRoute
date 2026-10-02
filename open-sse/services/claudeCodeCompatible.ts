@@ -2,8 +2,14 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { getStainlessTimeoutSeconds } from "@/shared/utils/runtimeTimeouts";
 import { ANTHROPIC_VERSION_HEADER } from "../config/anthropicHeaders.ts";
+import {
+  CLAUDE_CODE_COMPATIBLE_STAINLESS_PACKAGE_VERSION,
+  CLAUDE_CODE_COMPATIBLE_STAINLESS_RUNTIME_VERSION,
+  getClaudeCodeUserAgent,
+} from "../config/claudeCodeCompatibleIdentity.ts";
 import { supportsClaudeMaxEffort, supportsXHighEffort } from "../config/providerModels.ts";
 import { prepareClaudeRequest } from "../translator/helpers/claudeHelper.ts";
+import { normalizeClaudeToolInputSchema } from "../translator/helpers/schemaCoercion.ts";
 import { signRequestBody } from "./claudeCodeCCH.ts";
 import { resolveClaudeCodeCompatibleAnthropicBeta } from "./claudeCodeCompatibleBeta.ts";
 import { remapToolNamesInRequest } from "./claudeCodeToolRemapper.ts";
@@ -16,6 +22,7 @@ import { applyClaudeCodeCompatibleThinkingDisplay } from "./claudeCodeCompatible
 import { obfuscateInBody } from "./claudeCodeObfuscation.ts";
 import { applySystemTransformPipeline, PROVIDER_CC_BRIDGE } from "./systemTransforms.ts";
 import { usesCcWireImage } from "./ccWireImageBuiltins.ts";
+import { collectClaudeMediaBlocks, convertOpenAiMediaBlock } from "./ccOpenAiMediaBlocks.ts";
 import {
   fixToolPairs,
   fixToolAdjacency,
@@ -42,10 +49,7 @@ export {
   CLAUDE_CODE_COMPATIBLE_REDACT_THINKING_BETA,
   resolveClaudeCodeCompatibleAnthropicBeta,
 } from "./claudeCodeCompatibleBeta.ts";
-export const CLAUDE_CODE_COMPATIBLE_VERSION = "2.1.207";
-export const CLAUDE_CODE_COMPATIBLE_USER_AGENT = "claude-cli/2.1.207 (external, sdk-cli)";
-export const CLAUDE_CODE_COMPATIBLE_STAINLESS_PACKAGE_VERSION = "0.94.0";
-export const CLAUDE_CODE_COMPATIBLE_STAINLESS_RUNTIME_VERSION = "v24.3.0";
+export * from "../config/claudeCodeCompatibleIdentity.ts";
 export const CONTEXT_1M_BETA_HEADER = "context-1m-2025-08-07";
 const CLAUDE_CODE_COMPATIBLE_DEFAULT_SYSTEM_BLOCKS = [
   {
@@ -53,17 +57,9 @@ const CLAUDE_CODE_COMPATIBLE_DEFAULT_SYSTEM_BLOCKS = [
     text: "You are a Claude agent, built on Anthropic's Claude Agent SDK.",
   },
 ];
-const CONTEXT_1M_SUPPORTED_MODELS = [
-  "claude-fable-5",
-  "claude-sonnet-5",
-  "claude-opus-4-8",
-  "claude-opus-4-7",
-  "claude-opus-4-6",
-];
 export const CLAUDE_CODE_COMPATIBLE_STAINLESS_TIMEOUT_SECONDS = getStainlessTimeoutSeconds(
   process.env
 );
-
 type HeaderLike =
   | Headers
   | Record<string, string | undefined>
@@ -145,36 +141,18 @@ export function joinClaudeCodeCompatibleUrl(baseUrl: string, path: string): stri
   return joinNormalizedBaseUrlAndPath(stripClaudeCodeCompatibleEndpointSuffix(baseUrl), path);
 }
 
-export function appendAnthropicBetaHeader(
-  headers: Record<string, string>,
-  betaHeader: string
-): void {
-  const existingKey = Object.keys(headers).find((key) => key.toLowerCase() === "anthropic-beta");
-  if (!existingKey) {
-    headers["anthropic-beta"] = betaHeader;
-    return;
-  }
+export {
+  appendAnthropicBetaHeader,
+  removeAnthropicBetaHeader,
+  hasCodeExecutionTool,
+  maybeAppendSkillsBeta,
+  syncSkillsBeta,
+  SKILLS_BETA_HEADER,
+} from "../config/anthropicHeaders.ts";
 
-  const existingValues = String(headers[existingKey] || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  if (!existingValues.includes(betaHeader)) {
-    headers[existingKey] = [...existingValues, betaHeader].join(",");
-  }
-}
-
-export function modelSupportsContext1mBeta(model: string | null | undefined): boolean {
-  const normalizedModel = String(model || "")
-    .trim()
-    .toLowerCase()
-    .replace(/-\d{8}$/, "");
-
-  return CONTEXT_1M_SUPPORTED_MODELS.some(
-    (supported) => normalizedModel === supported || normalizedModel.startsWith(`${supported}-`)
-  );
-}
+// Re-exported from the shared context1m module so existing importers of this
+// helper (base.ts) keep working; the eligibility list now has one source of truth.
+export { modelSupportsContext1mBeta } from "../config/context1m.ts";
 
 export function buildClaudeCodeCompatibleHeaders(
   apiKey: string,
@@ -195,7 +173,7 @@ export function buildClaudeCodeCompatibleHeaders(
     }),
     "anthropic-dangerous-direct-browser-access": "true",
     "x-app": "cli",
-    "User-Agent": CLAUDE_CODE_COMPATIBLE_USER_AGENT,
+    "User-Agent": getClaudeCodeUserAgent("sdk-cli"),
     "X-Stainless-Retry-Count": "0",
     "X-Stainless-Timeout": String(CLAUDE_CODE_COMPATIBLE_STAINLESS_TIMEOUT_SECONDS),
     "X-Stainless-Lang": "js",
@@ -415,6 +393,7 @@ export { computeFingerprint } from "./claudeCodeFingerprint.ts";
 export { obfuscateSensitiveWords, setSensitiveWords } from "./claudeCodeObfuscation.ts";
 export {
   enforceThinkingTemperature,
+  finalizeClaudeBodyConstraints,
   disableThinkingIfToolChoiceForced,
   enforceCacheControlLimit,
 } from "./claudeCodeConstraints.ts";
@@ -516,13 +495,13 @@ function buildClaudeCodeCompatibleMessages(messages: MessageLike[]) {
         message
       ): message is {
         role: "user" | "assistant";
-        content: Array<{ type: string; text: string }>;
+        content: Array<Record<string, unknown>>;
       } => !!message && message.content.length > 0
     );
 
   const merged: Array<{
     role: "user" | "assistant";
-    content: Array<{ type: string; text: string }>;
+    content: Array<Record<string, unknown>>;
   }> = [];
 
   for (const message of converted) {
@@ -718,12 +697,12 @@ function convertClaudeCodeCompatibleMessage(message: MessageLike | null | undefi
   if (!role) return null;
 
   const text = contentToText(message?.content);
-  if (!text) return null;
+  // #7777: keep the user-turn media parts that contentToText() above drops.
+  const media = role === "user" ? collectClaudeMediaBlocks(message?.content) : [];
+  const content = [...(text ? [{ type: "text", text }] : []), ...media];
+  if (content.length === 0) return null;
 
-  return {
-    role,
-    content: [{ type: "text", text }],
-  };
+  return { role, content };
 }
 
 function buildClaudeCodeCompatibleTools(
@@ -768,10 +747,13 @@ function convertClaudeCodeCompatibleTool(tool: unknown) {
 
   const rawSchema = readRecord(toolData.parameters) ||
     readRecord(toolData.input_schema) || { type: "object", properties: {}, required: [] };
-  const inputSchema =
+  const withProperties =
     rawSchema.type === "object" && !readRecord(rawSchema.properties)
       ? { ...rawSchema, properties: {} }
       : rawSchema;
+  // Flatten a root-level anyOf/oneOf/allOf: Anthropic refuses it outright with
+  // "input_schema does not support oneOf, allOf, or anyOf at the top level" (#13552).
+  const inputSchema = normalizeClaudeToolInputSchema(withProperties);
 
   const converted: Record<string, unknown> = {
     name,
@@ -976,7 +958,7 @@ function normalizeClaudeContentBlock(block: unknown) {
     };
   }
 
-  return record;
+  return convertOpenAiMediaBlock(record) ?? record;
 }
 
 function convertClaudeCodeCompatibleClaudeMessage(
