@@ -1,5 +1,5 @@
 diff --git a/src/mitm/server.cjs b/src/mitm/server.cjs
-index a36cae583..60d1c633a 100644
+index a36cae583..aabae74eb 100644
 --- a/src/mitm/server.cjs
 +++ b/src/mitm/server.cjs
 @@ -5,6 +5,22 @@ const path = require("path");
@@ -85,14 +85,18 @@ index a36cae583..60d1c633a 100644
  
    if (bodyBuffer.length > 0) forwardReq.write(bodyBuffer);
    forwardReq.end();
-@@ -562,9 +606,35 @@ async function intercept(req, res, bodyBuffer, override, sourceModel) {
+@@ -562,9 +606,39 @@ async function intercept(req, res, bodyBuffer, override, sourceModel) {
      res.once("close", onDownstreamClose);
      let reader = null;
      try {
 -      const response = await fetch(forward.url, {
 +      const forwardUrl = new URL(forward.url);
-+      if (agentId === "claude-code")
-+        forwardUrl.search = new URL(req.url, "https://api.anthropic.com").search;
++      if (agentId === "claude-code") {
++        const nativeUrl = new URL(req.url, "https://api.anthropic.com");
++        if (nativeUrl.pathname === "/v1/messages/count_tokens")
++          forwardUrl.pathname = nativeUrl.pathname;
++        forwardUrl.search = nativeUrl.search;
++      }
 +      const retainedHeaders = {};
 +      const excludedHeaders = new Set([
 +        "host",
@@ -122,7 +126,7 @@ index a36cae583..60d1c633a 100644
            "Content-Type": "application/json",
            Authorization: `Bearer ${API_KEY}`,
            "x-omniroute-source": "agent-bridge",
-@@ -577,19 +647,35 @@ async function intercept(req, res, bodyBuffer, override, sourceModel) {
+@@ -577,19 +651,35 @@ async function intercept(req, res, bodyBuffer, override, sourceModel) {
        captureStatus = response.status;
        respHeaders = headersToObject(response.headers);
  
@@ -168,7 +172,7 @@ index a36cae583..60d1c633a 100644
  
        reader = response.body.getReader();
        const decoder = new TextDecoder();
-@@ -610,7 +696,7 @@ async function intercept(req, res, bodyBuffer, override, sourceModel) {
+@@ -610,7 +700,7 @@ async function intercept(req, res, bodyBuffer, override, sourceModel) {
          // #14528: a slow client must drain before the next upstream read,
          // otherwise the socket write queue grows without bound. A close
          // during the wait is caught by the downstreamClosed check above.
@@ -177,7 +181,7 @@ index a36cae583..60d1c633a 100644
        }
      } finally {
        res.off("close", onDownstreamClose);
-@@ -632,6 +718,13 @@ async function intercept(req, res, bodyBuffer, override, sourceModel) {
+@@ -632,6 +722,13 @@ async function intercept(req, res, bodyBuffer, override, sourceModel) {
      // in the response body. Hard Rule #12 — sanitize before sending.
      captureError = sanitizeErrorMessage(error && error.message);
      console.error(`❌ ${error.message}`);
@@ -191,7 +195,7 @@ index a36cae583..60d1c633a 100644
      if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/json" });
      res.end(
        JSON.stringify({
-@@ -673,12 +766,25 @@ async function startMitmServer() {
+@@ -673,12 +770,25 @@ async function startMitmServer() {
    const sslOptions =
      CERT_MODE === "root-ca" ? await loadRootCaSslOptions() : loadLegacySslOptions();
  
@@ -219,7 +223,7 @@ index a36cae583..60d1c633a 100644
      const host = String(req.headers.host || "")
        .split(":")[0]
        .toLowerCase();
-@@ -693,12 +799,12 @@ async function startMitmServer() {
+@@ -693,12 +803,12 @@ async function startMitmServer() {
  
      if (req.headers["x-omniroute-source"] === "omniroute") {
        vlog(1, `[MITM] → PASSTHROUGH (OmniRoute source loop)`);
@@ -234,7 +238,7 @@ index a36cae583..60d1c633a 100644
      }
  
      const agentId = TARGET_HOST_AGENT.get(host) || "antigravity";
-@@ -736,14 +842,14 @@ async function startMitmServer() {
+@@ -736,14 +846,14 @@ async function startMitmServer() {
  
      if (!isChatRequest) {
        vlog(1, `[MITM] → PASSTHROUGH (URL ${req.url} does not match chat patterns)`);
@@ -251,7 +255,7 @@ index a36cae583..60d1c633a 100644
      }
  
      stats.interceptedRequests++;
-@@ -758,6 +864,28 @@ async function startMitmServer() {
+@@ -758,6 +868,28 @@ async function startMitmServer() {
            : "")
      );
      return intercept(req, res, bodyBuffer, mappedOverride, model);
@@ -280,7 +284,7 @@ index a36cae583..60d1c633a 100644
    });
  
    // =========================================================================
-@@ -898,22 +1026,25 @@ async function startMitmServer() {
+@@ -898,22 +1030,25 @@ async function startMitmServer() {
    server.headersTimeout = MITM_IDLE_TIMEOUT_MS; // time allowed to send headers
    server.keepAliveTimeout = MITM_IDLE_TIMEOUT_MS; // idle keep-alive window
  
@@ -307,7 +311,7 @@ index a36cae583..60d1c633a 100644
        stats.activeConnections = Math.max(0, stats.activeConnections - 1);
        writeStats();
      });
-@@ -930,12 +1061,25 @@ async function startMitmServer() {
+@@ -930,12 +1065,25 @@ async function startMitmServer() {
      process.exit(1);
    });
  

@@ -62,6 +62,7 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
       !source.toString().includes("void handleRequest(req, res).catch") ||
       !source.toString().includes("for (const socket of sockets) socket.destroy()") ||
       !source.toString().includes("upstreamResponse?.destroy()") ||
+      !source.toString().includes('nativeUrl.pathname === "/v1/messages/count_tokens"') ||
       !source.toString().includes("writeWithBackpressure(res, value)")
     ) {
       throw new Error("Archive lacks Bridge lifecycle or request failure isolation");
