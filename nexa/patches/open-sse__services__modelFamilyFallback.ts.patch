@@ -1,0 +1,14 @@
+diff --git a/open-sse/services/modelFamilyFallback.ts b/open-sse/services/modelFamilyFallback.ts
+index 6226c1217..1bd90f1dc 100644
+--- a/open-sse/services/modelFamilyFallback.ts
++++ b/open-sse/services/modelFamilyFallback.ts
+@@ -256,6 +256,9 @@ export function getNextFamilyFallback(
+ ): string | null {
+   const resolved = resolveProviderFamilyCandidates(currentModel, providerHint);
+   if (!resolved) return null;
++  // NexaLance: never answer a Claude request with an older or smaller Claude model.
++  // Surface the upstream error instead, as the native client would see it.
++  if (resolved.provider === "claude") return null;
+ 
+   for (const candidate of resolved.candidates) {
+     if (!wasCandidateTried(candidate, resolved.provider, triedModels)) {

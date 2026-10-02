@@ -7,12 +7,12 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 92,
-    "patches": 60,
-    "new": 30,
+    "total": 97,
+    "patches": 64,
+    "new": 31,
     "tooling": 2,
-    "upstreamCandidates": 9,
-    "nexaSpecific": 19,
+    "upstreamCandidates": 10,
+    "nexaSpecific": 23,
     "needsReview": 64,
     "pendingUpstreamPR": 12,
     "mergedUpstreamPR": 1
@@ -129,6 +129,14 @@
       }
     },
     {
+      "file": "patches/open-sse__config__codexIdentity.ts.patch",
+      "layer": "patch",
+      "class": "upstream-candidate",
+      "target": "open-sse/config/codexIdentity.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/open-sse__executors__base.ts.patch",
       "layer": "patch",
       "class": "upstream-candidate",
@@ -149,6 +157,14 @@
         "pr": 15323,
         "state": "OPEN"
       }
+    },
+    {
+      "file": "patches/open-sse__handlers__chatCore__upstreamBody.ts.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "open-sse/handlers/chatCore/upstreamBody.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
     },
     {
       "file": "patches/open-sse__services____tests____antigravity-quota-family.test.ts.patch",
@@ -184,6 +200,14 @@
         "pr": 6452,
         "state": "MERGED"
       }
+    },
+    {
+      "file": "patches/open-sse__services__modelFamilyFallback.ts.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "open-sse/services/modelFamilyFallback.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
     },
     {
       "file": "patches/open-sse__utils__earlyStreamKeepalive.ts.patch",
@@ -518,6 +542,14 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/tests__unit__model-family-fallback-notation.test.ts.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "tests/unit/model-family-fallback-notation.test.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/tsconfig.patch",
       "layer": "patch",
       "class": "nexa-specific",
@@ -732,6 +764,14 @@
       "layer": "new",
       "class": "nexa-specific",
       "target": "tests/unit/agent-bridge-selected-dns.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-text-fidelity.test.ts",
+      "layer": "new",
+      "class": "nexa-specific",
+      "target": "tests/unit/agent-bridge-text-fidelity.test.ts",
       "conflictRisk": "none",
       "upstreamPR": null
     },

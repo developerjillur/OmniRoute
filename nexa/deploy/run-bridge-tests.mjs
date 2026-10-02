@@ -48,7 +48,7 @@ if (process.exitCode === 0) {
       "--config",
       "vitest.config.ts",
       "--maxWorkers",
-      "2",
+      "1",
       ...ui,
     ],
     { stdio: "inherit", env: { ...process.env, DATA_DIR: dataDir, MITM_AUTO_RECOVER: "false" } }

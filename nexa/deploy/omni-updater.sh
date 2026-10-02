@@ -69,25 +69,17 @@ else
 fi
 cd "$BUILD_TREE"
 node nexa/apply.mjs
-if ! (
-  npx --no-install fumadocs-mdx &&
-  npm run typecheck:core &&
-  node --test nexa/deploy/bootstrap-launchdaemon.test.mjs nexa/deploy/native-ingress.test.mjs nexa/deploy/ensure-free-space.test.mjs nexa/deploy/stop-owned-bridge.test.mjs &&
-  NODE_OPTIONS=--max-old-space-size=8192 node scripts/check/check-tsc-ratchet.mjs --ratchet | tee "$OUTDIR/tsc-ratchet.log" &&
-  ! grep -q 'tscErrors=SKIP' "$OUTDIR/tsc-ratchet.log" &&
-  node nexa/deploy/run-bridge-tests.mjs &&
-  node --import tsx/esm --test tests/unit/traffic-inspector-event-stream.test.ts tests/unit/security/audit-remediation.test.ts tests/unit/security/audit-remediation-guards.test.ts tests/unit/provider-validation-ssrf-guard.test.ts tests/unit/combo-diagnostics-trace.test.ts tests/unit/idempotency-fusion-collision.test.ts &&
-  npm run build:release && npm run build:cli-api && npm run build:cli &&
-  OMNIROUTE_ALLOW_CANARY_BUILD=1 npm run check:pack-artifact &&
-  "${NPM[@]}" pack --pack-destination "$OUTDIR"
-); then node nexa/restore.mjs; fail "Build/validation failed; live service untouched; isolated build kept"; fi
+if ! node nexa/deploy/run-bounded-build.mjs -- /bin/bash nexa/deploy/build-candidate.sh "$OUTDIR"; then
+  node nexa/restore.mjs
+  fail "Build/validation stopped; live service untouched; inspect the build budget report"
+fi
 # Desktop shell uses the same overlay build; failure retains the installed shell.
 if [ -d "$REPO/electron/node_modules" ] && [ -f "$BUILDS/.lock-electron" ] && cmp -s electron/package-lock.json "$BUILDS/.lock-electron"; then
   cp -al "$REPO/electron/node_modules" electron/node_modules
 else
   (cd electron && npm ci --no-fund --no-audit) || (cd electron && npm install --no-fund --no-audit)
 fi
-if (cd electron && npm run prepare:bundle && npx --no-install electron-builder --dir --arm64); then
+if (cd electron && node ../nexa/deploy/run-bounded-build.mjs -- /bin/bash -c 'npm run prepare:bundle && npx --no-install electron-builder --dir --arm64'); then
   ditto electron/dist-electron/mac-arm64/OmniRoute.app "$OUTDIR/OmniRoute.app"
 else say "WARNING: desktop build failed; installed shell will be retained"; fi
 node nexa/restore.mjs

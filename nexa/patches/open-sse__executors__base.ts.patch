@@ -1,5 +1,5 @@
 diff --git a/open-sse/executors/base.ts b/open-sse/executors/base.ts
-index f35138f44..28e0414fd 100644
+index f35138f44..9097745fc 100644
 --- a/open-sse/executors/base.ts
 +++ b/open-sse/executors/base.ts
 @@ -234,6 +234,7 @@ export type ExecuteInput = {
@@ -48,7 +48,17 @@ index f35138f44..28e0414fd 100644
      let timeoutId: ReturnType<typeof setTimeout> | null = null;
      let activeSignal = signal || null;
      let controller: AbortController | null = null;
-@@ -1096,6 +1113,16 @@ export class BaseExecutor {
+@@ -1005,7 +1022,8 @@ export class BaseExecutor {
+           if (Array.isArray(tb.tools)) {
+             tb.tools = sanitizeClaudeToolSchemas(tb.tools);
+           }
+-          obfuscateInBody(tb);
++          // Native clients supply code and exact tool descriptions; preserve those bytes.
++          if (!isClaudeCodeClient) obfuscateInBody(tb);
+ 
+           // NOTE (issue #2260): This is the native `claude` provider OAuth path.
+           // It is intentionally NOT routed through applyCcBridgeTransformPipeline.
+@@ -1096,6 +1114,16 @@ export class BaseExecutor {
              // must opt in with x-omniroute-thinking; force-injecting adaptive thinking
              // leaks non-standard reasoning replay fields back into those clients.
              const isHaiku = typeof tb.model === "string" && tb.model.includes("haiku");
@@ -65,7 +75,7 @@ index f35138f44..28e0414fd 100644
              // #5312 RC-B: honor the operator's proxy-level Thinking-Budget mode.
              // `auto` means "strip — let the provider decide", so suppress the default
              // adaptive injection. Passthrough/no-config keeps the native Claude Code
-@@ -1111,7 +1138,11 @@ export class BaseExecutor {
+@@ -1111,7 +1139,11 @@ export class BaseExecutor {
                delete tb.thinking;
                delete tb.context_management;
                delete tb.output_config;
@@ -78,7 +88,7 @@ index f35138f44..28e0414fd 100644
                tb.thinking = { type: "adaptive" };
                tb.context_management = {
                  edits: [{ type: "clear_thinking_20251015", keep: "all" }],
-@@ -1122,7 +1153,11 @@ export class BaseExecutor {
+@@ -1122,7 +1154,11 @@ export class BaseExecutor {
              // When an operator budget (custom/adaptive mode) produced an enabled block
              // upstream, remap it to adaptive + output_config.effort here.
              const th = tb.thinking as Record<string, unknown> | undefined;
@@ -91,7 +101,18 @@ index f35138f44..28e0414fd 100644
                const b = typeof th.budget_tokens === "number" ? th.budget_tokens : 0;
                tb.thinking = { type: "adaptive" };
                tb.output_config = {
-@@ -1264,7 +1299,8 @@ export class BaseExecutor {
+@@ -1206,7 +1242,9 @@ export class BaseExecutor {
+           // `inject_billing_header` — billing + sentinel are already
+           // prepended above. Users can extend the pipeline via Settings UI.
+           {
+-            const transformResult = applySystemTransformPipeline(PROVIDER_CLAUDE, tb);
++            const transformResult = isClaudeCodeClient
++              ? { appliedOpKinds: [] as string[] }
++              : applySystemTransformPipeline(PROVIDER_CLAUDE, tb);
+             if (transformResult.appliedOpKinds.length > 0) {
+               console.log(
+                 `[SystemTransforms] claude-native: ${transformResult.appliedOpKinds.join(", ")}`
+@@ -1264,7 +1302,8 @@ export class BaseExecutor {
                  // model that does not qualify (e.g. Haiku), which Anthropic rejects (#10119).
                  model,
                  // Gate skills-2025-10-02 on presence of code_execution tool in transformed body (#14200):

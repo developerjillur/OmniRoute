@@ -1,0 +1,17 @@
+diff --git a/open-sse/config/codexIdentity.ts b/open-sse/config/codexIdentity.ts
+index 822249078..422d374df 100644
+--- a/open-sse/config/codexIdentity.ts
++++ b/open-sse/config/codexIdentity.ts
+@@ -596,7 +596,11 @@ export function isClaudeCodeOriginatedHeaders(
+ 
+   // Claude Code identifies itself via the user-agent header
+   const userAgent = getHeader("user-agent");
+-  if (userAgent.includes("claude-code") || userAgent.includes("anthropic-ai/claude-code")) {
++  if (
++    userAgent.startsWith("claude-cli/") ||
++    userAgent.includes("claude-code") ||
++    userAgent.includes("anthropic-ai/claude-code")
++  ) {
+     return true;
+   }
+   // Also check originator if present

@@ -12,7 +12,10 @@ applyOverlay({ quiet: true });
 let code = 0;
 try {
   console.log(`  → npm ${buildCmd.join(" ")}  (in ${REPO})`);
-  execFileSync("npm", buildCmd, { cwd: REPO, stdio: "inherit" });
+  execFileSync(process.execPath, ["nexa/deploy/run-bounded-build.mjs", "--", "npm", ...buildCmd], {
+    cwd: REPO,
+    stdio: "inherit",
+  });
   console.log("  ✓ build complete");
 } catch (e) {
   code = e.status || 1;

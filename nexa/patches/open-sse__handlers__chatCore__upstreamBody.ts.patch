@@ -1,0 +1,29 @@
+diff --git a/open-sse/handlers/chatCore/upstreamBody.ts b/open-sse/handlers/chatCore/upstreamBody.ts
+index c824da3d4..d83a75934 100644
+--- a/open-sse/handlers/chatCore/upstreamBody.ts
++++ b/open-sse/handlers/chatCore/upstreamBody.ts
+@@ -9,6 +9,7 @@ import {
+   resolvePayloadRuleProtocols,
+ } from "../../services/payloadRules.ts";
+ import { getEffectiveToolLimit, getKnownToolLimit } from "../../services/toolLimitDetector.ts";
++import { isClaudeCodeOriginatedHeaders } from "../../config/codexIdentity.ts";
+ import { OMNIROUTE_WEB_SEARCH_FALLBACK_TOOL_NAME } from "../../services/webSearchFallback.ts";
+ import { OMNIROUTE_WEB_FETCH_FALLBACK_TOOL_NAME } from "../../services/webFetchInterception.ts";
+ import { CLAUDE_OAUTH_TOOL_PREFIX } from "../../translator/request/openai-to-claude.ts";
+@@ -340,7 +341,15 @@ export async function prepareUpstreamBody(opts: PrepareUpstreamBodyOptions): Pro
+     log,
+   });
+   bodyToSend = defaultImageDetail(bodyToSend, isOpencodeClient);
+-  bodyToSend = truncateToolList(bodyToSend, provider, bypassDefaultToolLimit ?? false, log);
++  const clientHeaders = opts.clientRawRequest?.headers;
++  const preserveNativeTools =
++    provider === "claude" &&
++    targetFormat === FORMATS.CLAUDE &&
++    clientHeaders !== null &&
++    typeof clientHeaders === "object" &&
++    isClaudeCodeOriginatedHeaders(clientHeaders as Record<string, unknown>);
++  if (!preserveNativeTools)
++    bodyToSend = truncateToolList(bodyToSend, provider, bypassDefaultToolLimit ?? false, log);
+   const connectionCacheOverride = resolveConnectionCacheOverride(credentials?.providerSpecificData);
+   bodyToSend = await injectPromptCacheKey(
+     bodyToSend,

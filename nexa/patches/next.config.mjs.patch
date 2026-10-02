@@ -1,5 +1,5 @@
 diff --git a/next.config.mjs b/next.config.mjs
-index 834c7e078..e8603cc49 100644
+index 834c7e078..258c3e819 100644
 --- a/next.config.mjs
 +++ b/next.config.mjs
 @@ -15,10 +15,26 @@ import { shouldBuildStandalone } from "./scripts/build/backendOnlyPages.mjs";
@@ -46,3 +46,29 @@ index 834c7e078..e8603cc49 100644
    "worker-src 'self' blob:",
    "manifest-src 'self'",
  ].join("; ");
+@@ -235,6 +247,13 @@ const nextConfig = {
+   // accept for image-bearing requests; tune via env if a deployment needs
+   // more.
+   experimental: {
++    // Local builds opt into bounded worker fanout through the managed build runner.
++    ...(process.env.NEXA_BUILD_WORKERS
++      ? {
++          cpus: Math.max(1, Math.min(2, Number(process.env.NEXA_BUILD_WORKERS) || 1)),
++          memoryBasedWorkersCount: false,
++        }
++      : {}),
+     serverActions: {
+       bodySizeLimit: process.env.OMNIROUTE_SERVER_ACTIONS_BODY_LIMIT || "50mb",
+     },
+@@ -479,7 +498,10 @@ const nextConfig = {
+       // does the importing.
+       const replacements = [
+         [/^@\/mitm\/cert\/install$/, join(projectRoot, "src/mitm/cert/install.stub.ts")],
+-        [/^@\/lib\/zed-oauth\/keychain-reader$/, join(projectRoot, "src/lib/zed-oauth/keychain-reader.stub.ts")],
++        [
++          /^@\/lib\/zed-oauth\/keychain-reader$/,
++          join(projectRoot, "src/lib/zed-oauth/keychain-reader.stub.ts"),
++        ],
+         [/^@\/lib\/cloudSync$/, join(projectRoot, "src/lib/cloudSync.stub.ts")],
+         [
+           /^@\/lib\/services\/installers\/ninerouter$/,

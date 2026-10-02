@@ -1,0 +1,43 @@
+diff --git a/tests/unit/model-family-fallback-notation.test.ts b/tests/unit/model-family-fallback-notation.test.ts
+index e1fdc815b..737d7cebb 100644
+--- a/tests/unit/model-family-fallback-notation.test.ts
++++ b/tests/unit/model-family-fallback-notation.test.ts
+@@ -10,15 +10,15 @@ import assert from "node:assert/strict";
+ // removed the fabricated ids; `anthropic` genuinely serves them in dot notation.
+ const { getNextFamilyFallback } = await import("../../open-sse/services/modelFamilyFallback.ts");
+ 
+-test("Opus 5 falls back to the previous Opus tier first", () => {
+-  const next = getNextFamilyFallback("cc/claude-opus-5", new Set(["cc/claude-opus-5"]));
+-  assert.equal(next, "claude/claude-opus-4-8");
++test("NexaLance: Claude OAuth (cc/claude) never falls back to an older or smaller model", () => {
++  assert.equal(getNextFamilyFallback("cc/claude-opus-5", new Set(["cc/claude-opus-5"])), null);
++  assert.equal(getNextFamilyFallback("claude/claude-opus-4-8", new Set(["claude/claude-opus-4-8"])), null);
++  assert.equal(getNextFamilyFallback("claude-sonnet-5", new Set(["claude-sonnet-5"]), "claude"), null);
+ });
+ 
+-test("Fable 5 falls back to the next-best Opus tier first (not Sonnet) — cc→claude", () => {
++test("NexaLance: Fable 5 on cc→claude stays on the requested model", () => {
+   // `cc` is an alias parseModel normalizes to the `claude` provider.
+-  const next = getNextFamilyFallback("cc/claude-fable-5", new Set(["cc/claude-fable-5"]));
+-  assert.equal(next, "claude/claude-opus-4-8");
++  assert.equal(getNextFamilyFallback("cc/claude-fable-5", new Set(["cc/claude-fable-5"])), null);
+ });
+ 
+ test("Fable 5 fallback resolves to anthropic's dot-notation model id", () => {
+@@ -39,12 +39,12 @@ test("dot-notation current model is normalized for the family lookup", () => {
+   assert.equal(next, "anthropic/claude-opus-4.7");
+ });
+ 
+-test("skips already-tried candidates and advances down the Fable chain", () => {
++test("skips already-tried candidates and advances down the Fable chain (non-OAuth anthropic)", () => {
+   const next = getNextFamilyFallback(
+-    "cc/claude-fable-5",
+-    new Set(["cc/claude-fable-5", "claude/claude-opus-4-8"])
++    "anthropic/claude-fable-5",
++    new Set(["anthropic/claude-fable-5", "anthropic/claude-opus-4.8"])
+   );
+-  assert.equal(next, "claude/claude-opus-4-7");
++  assert.equal(next, "anthropic/claude-opus-4.7");
+ });
+ 
+ test("returns null for an unknown family", () => {
