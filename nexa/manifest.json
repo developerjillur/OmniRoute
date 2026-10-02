@@ -7,14 +7,14 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 77,
-    "patches": 49,
-    "new": 26,
+    "total": 79,
+    "patches": 50,
+    "new": 27,
     "tooling": 2,
-    "upstreamCandidates": 6,
+    "upstreamCandidates": 8,
     "nexaSpecific": 19,
     "needsReview": 52,
-    "pendingUpstreamPR": 9,
+    "pendingUpstreamPR": 11,
     "mergedUpstreamPR": 0
   },
   "items": [
@@ -122,6 +122,17 @@
       "layer": "patch",
       "class": "upstream-candidate",
       "target": "open-sse/config/anthropicHeaders.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
+    },
+    {
+      "file": "patches/open-sse__executors__base.ts.patch",
+      "layer": "patch",
+      "class": "upstream-candidate",
+      "target": "open-sse/executors/base.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": {
         "pr": 15323,
@@ -559,6 +570,17 @@
       "layer": "new",
       "class": "upstream-candidate",
       "target": "tests/unit/agent-bridge-client-beta.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-legacy-claude-thinking.test.ts",
+      "layer": "new",
+      "class": "upstream-candidate",
+      "target": "tests/unit/agent-bridge-legacy-claude-thinking.test.ts",
       "conflictRisk": "none",
       "upstreamPR": {
         "pr": 15323,

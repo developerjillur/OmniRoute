@@ -12,6 +12,9 @@ for (const [directory, pattern] of [
     if (pattern.test(name)) files.push(path.join(directory, name));
   }
 }
+if (!files.some((file) => file.endsWith("agent-bridge-legacy-claude-thinking.test.ts"))) {
+  throw new Error("Native legacy-Claude thinking suite is missing");
+}
 if (!files.some((file) => file.endsWith("agent-bridge-resilience.test.ts"))) {
   throw new Error("Native Bridge resilience suite is missing");
 }

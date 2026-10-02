@@ -50,6 +50,8 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
         .includes("message-threads-2026-08-12")
     )
       throw new Error("Archive drops native message-thread beta negotiation");
+    if (!read("package/open-sse/executors/base.ts").toString().includes("legacyThinkingModel"))
+      throw new Error("Archive injects unsupported adaptive thinking into legacy Claude models");
     const processState = read(lifecycleMember).toString();
     const runtimeManager = read("package/dist/src/mitm/manager.ts").toString();
     if (

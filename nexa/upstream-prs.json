@@ -91,5 +91,13 @@
   "tests/unit/agent-bridge-client-beta.test.ts": {
     "pr": 15323,
     "state": "OPEN"
+  },
+  "open-sse/executors/base.ts": {
+    "pr": 15323,
+    "state": "OPEN"
+  },
+  "tests/unit/agent-bridge-legacy-claude-thinking.test.ts": {
+    "pr": 15323,
+    "state": "OPEN"
   }
 }
