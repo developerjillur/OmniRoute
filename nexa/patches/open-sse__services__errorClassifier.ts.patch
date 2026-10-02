@@ -1,0 +1,10 @@
+--- a/open-sse/services/errorClassifier.ts
++++ b/open-sse/services/errorClassifier.ts
+@@ -364,6 +364,7 @@
+ // not provider/model health. Keep every expression bounded to avoid ReDoS on
+ // upstream-controlled error bodies.
+ const RESOURCE_NOT_FOUND_PATTERNS = [
++  /\bno thread state was found for the requested [`"']?previous_message_id\b/i,
+   /\bfiles?\b[^\n]{0,160}\b(?:not found|does not exist)\b/i,
+   /\b(?:not found|does not exist)\b[^\n]{0,160}\bfiles?\b/i,
+   /\b(?:input[_ -]?file|file[_ -]?id|item|response|vector[_ -]?store|upload)\b[^\n]{0,160}\b(?:not found|does not exist)\b/i,

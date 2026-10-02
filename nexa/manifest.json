@@ -7,15 +7,15 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 83,
-    "patches": 53,
-    "new": 28,
+    "total": 86,
+    "patches": 55,
+    "new": 29,
     "tooling": 2,
     "upstreamCandidates": 9,
     "nexaSpecific": 19,
-    "needsReview": 55,
+    "needsReview": 58,
     "pendingUpstreamPR": 12,
-    "mergedUpstreamPR": 0
+    "mergedUpstreamPR": 1
   },
   "items": [
     {
@@ -173,6 +173,17 @@
       "target": "open-sse/services/claudeCodeConstraints.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
+    },
+    {
+      "file": "patches/open-sse__services__errorClassifier.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "open-sse/services/errorClassifier.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": {
+        "pr": 6452,
+        "state": "MERGED"
+      }
     },
     {
       "file": "patches/open-sse__utils__earlyStreamKeepalive.ts.patch",
@@ -416,6 +427,14 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/src__shared__validation__schemas__settings.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/shared/validation/schemas/settings.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/tests__e2e__providers-management.spec.ts.patch",
       "layer": "patch",
       "class": "needs-review",
@@ -624,6 +643,14 @@
         "pr": 15323,
         "state": "OPEN"
       }
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-limit-settings.test.ts",
+      "layer": "new",
+      "class": "needs-review",
+      "target": "tests/unit/agent-bridge-limit-settings.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
     },
     {
       "file": "new/tests/unit/agent-bridge-native-transport.test.ts",
