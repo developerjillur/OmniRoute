@@ -1,5 +1,5 @@
 diff --git a/next.config.mjs b/next.config.mjs
-index 834c7e078..258c3e819 100644
+index 834c7e078..e2f754390 100644
 --- a/next.config.mjs
 +++ b/next.config.mjs
 @@ -15,10 +15,26 @@ import { shouldBuildStandalone } from "./scripts/build/backendOnlyPages.mjs";
@@ -60,7 +60,19 @@ index 834c7e078..258c3e819 100644
      serverActions: {
        bodySizeLimit: process.env.OMNIROUTE_SERVER_ACTIONS_BODY_LIMIT || "50mb",
      },
-@@ -479,7 +498,10 @@ const nextConfig = {
+@@ -394,6 +413,11 @@ const nextConfig = {
+     ignoreBuildErrors: true,
+   },
+   webpack(config, { dev, webpack }) {
++    if (!dev && process.env.NEXA_BUILD_WORKERS) {
++      // Isolated builds do not reuse caches; bound concurrent module work too.
++      config.parallelism = 8;
++      config.cache = false;
++    }
+     config.ignoreWarnings = [
+       ...(config.ignoreWarnings || []),
+       isNextIntlExtractorDynamicImportWarning,
+@@ -479,7 +503,10 @@ const nextConfig = {
        // does the importing.
        const replacements = [
          [/^@\/mitm\/cert\/install$/, join(projectRoot, "src/mitm/cert/install.stub.ts")],

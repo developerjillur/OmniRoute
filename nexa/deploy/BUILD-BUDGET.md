@@ -8,12 +8,13 @@ Defaults:
 
 | Setting | Value |
 | --- | --- |
-| Node old-space heap per process | 5120 MiB |
+| Node old-space heap per process | 6144 MiB |
 | Next build workers | 1 |
 | Total observed build-tree RSS budget | 8192 MiB |
 | Memory sampling interval | 1 second |
 | Scheduling priority | nice +10 |
-| Next bundler | Webpack |
+| Next bundler | Webpack; parallelism 8, compile cache disabled |
+| macOS build toolchain | /usr/local/bin first in PATH |
 | UV thread pool | 2 |
 | Regression execution | Serial; UI maxWorkers 1 |
 
@@ -29,8 +30,11 @@ keeps the live runtime intact. Other sessions must not be killed by name or port
 
 The 2026-10-02 validation measured approximately 4.9 GiB peak RSS during the
 initial typecheck/ratchet run. A deliberate allocating-child test verified that
-the watchdog terminates an over-budget process. A complete production build under
-these new settings has not yet been validated.
+the watchdog terminates an over-budget process. A 5 GiB production attempt exhausted its heap at 5162 MiB observed RSS.
+A separate 6 GiB retry inherited Node 26 from the shell and also exhausted its
+heap. Managed macOS builds now consistently prefer the installed Node 24
+toolchain, disable unused compilation cache, and limit module parallelism to 8.
+A successful complete production build under this revised profile is still required.
 
 `build-candidate.sh` preserves the existing typecheck, ratchet, Bridge, UI,
 security, artifact, and packaging gates. The updater still requires an isolated

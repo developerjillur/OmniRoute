@@ -6,8 +6,9 @@ test("build defaults replace an inherited large heap without dropping other opti
   const env = buildEnvironment({
     NODE_OPTIONS: "--require=/tmp/shim.cjs --max-old-space-size=16384",
   });
-  assert.equal(env.NODE_OPTIONS, "--require=/tmp/shim.cjs --max-old-space-size=5120");
+  assert.equal(env.NODE_OPTIONS, "--require=/tmp/shim.cjs --max-old-space-size=6144");
   assert.equal(env.NEXA_BUILD_WORKERS, "1");
+  if (process.platform === "darwin") assert.ok(env.PATH.startsWith("/usr/local/bin:"));
   assert.equal(env.OMNIROUTE_USE_TURBOPACK, "0");
   assert.throws(() => buildEnvironment({ NEXA_BUILD_WORKERS: "13" }));
 });

@@ -3,7 +3,7 @@ import { pathToFileURL } from "node:url";
 import path from "node:path";
 
 export function buildEnvironment(env = process.env) {
-  const heap = Number(env.NEXA_BUILD_HEAP_MB || 5120);
+  const heap = Number(env.NEXA_BUILD_HEAP_MB || 6144);
   const workers = Number(env.NEXA_BUILD_WORKERS || 1);
   if (!Number.isInteger(heap) || heap < 1024 || heap > 6144)
     throw Error("Build heap must be 1024..6144 MiB");
@@ -14,6 +14,10 @@ export function buildEnvironment(env = process.env) {
     .trim();
   return {
     ...env,
+    PATH:
+      process.platform === "darwin"
+        ? `/usr/local/bin:${env.PATH || process.env.PATH || "/usr/bin:/bin"}`
+        : env.PATH,
     NODE_OPTIONS: `${options} --max-old-space-size=${heap}`.trim(),
     OMNIROUTE_BUILD_MEMORY_MB: String(heap),
     NEXA_BUILD_WORKERS: String(workers),
