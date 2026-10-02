@@ -56,7 +56,8 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
       !processState.includes("omniroute.mitm.process-lifecycle.v1") ||
       !runtimeManager.includes("getBridgeProcessState") ||
       !read("package/dist/src/mitm/processLifecycle.ts").equals(read(lifecycleMember)) ||
-      !source.toString().includes("void handleRequest(req, res).catch")
+      !source.toString().includes("void handleRequest(req, res).catch") ||
+      !source.toString().includes("for (const socket of sockets) socket.destroy()")
     ) {
       throw new Error("Archive lacks Bridge lifecycle or request failure isolation");
     }

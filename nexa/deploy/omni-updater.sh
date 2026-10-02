@@ -19,7 +19,7 @@ status() { /usr/local/bin/node -e 'const fs=require("fs");fs.writeFileSync(proce
 fail() { status failed "$1"; exit 1; }
 healthy() { [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://127.0.0.1:28128/healthz)" = 200 ]; }
 wait_ready() { local elapsed=0; while [ "$elapsed" -lt "${NEXA_READY_TIMEOUT_SECONDS:-180}" ]; do if healthy && node "$TOOLS/bridge-gate.mjs" live "$DATA_DIR"; then return 0; fi; sleep 2; elapsed=$((elapsed+2)); done; return 1; }
-stop_svc() { launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true; local waited=0; while launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; do [ "$waited" -lt 60 ] || return 1; sleep 1; waited=$((waited+1)); done; }
+stop_svc() { launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true; local waited=0; while launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; do [ "$waited" -lt 60 ] || return 1; sleep 1; waited=$((waited+1)); done; node "$TOOLS/stop-owned-bridge.mjs" "$DATA_DIR" "$RUNTIME"; }
 start_svc() { launchctl bootstrap "$DOMAIN" "$PLIST"; }
 case "$MODE" in update|redeploy|build-only) ;; *) echo "usage: $0 update|redeploy|build-only"; exit 2 ;; esac
 mkdir -p "$BUILDS"
@@ -70,7 +70,7 @@ cd "$BUILD_TREE"
 node nexa/apply.mjs
 if ! (
   npm run typecheck:core &&
-  node --test nexa/deploy/bootstrap-launchdaemon.test.mjs nexa/deploy/native-ingress.test.mjs nexa/deploy/ensure-free-space.test.mjs &&
+  node --test nexa/deploy/bootstrap-launchdaemon.test.mjs nexa/deploy/native-ingress.test.mjs nexa/deploy/ensure-free-space.test.mjs nexa/deploy/stop-owned-bridge.test.mjs &&
   NODE_OPTIONS=--max-old-space-size=8192 node scripts/check/check-tsc-ratchet.mjs --ratchet | tee "$OUTDIR/tsc-ratchet.log" &&
   ! grep -q 'tscErrors=SKIP' "$OUTDIR/tsc-ratchet.log" &&
   node --import tsx/esm --test tests/unit/agent-bridge-native-transport.test.ts tests/unit/agent-bridge-runtime-state.test.ts tests/unit/agent-bridge-lifecycle.test.ts tests/unit/agent-bridge-client-beta.test.ts tests/unit/traffic-inspector-event-stream.test.ts tests/unit/agent-bridge-selected-dns.test.ts tests/unit/security/audit-remediation.test.ts tests/unit/security/audit-remediation-guards.test.ts tests/unit/provider-validation-ssrf-guard.test.ts tests/unit/combo-diagnostics-trace.test.ts tests/unit/idempotency-fusion-collision.test.ts tests/unit/mitm-server-claude-code-routing.test.ts &&

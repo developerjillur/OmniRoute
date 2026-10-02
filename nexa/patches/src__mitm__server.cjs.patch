@@ -1,5 +1,5 @@
 diff --git a/src/mitm/server.cjs b/src/mitm/server.cjs
-index a36cae583..4d7463444 100644
+index a36cae583..de06b6144 100644
 --- a/src/mitm/server.cjs
 +++ b/src/mitm/server.cjs
 @@ -5,6 +5,22 @@ const path = require("path");
@@ -204,7 +204,7 @@ index a36cae583..4d7463444 100644
    });
  
    // =========================================================================
-@@ -898,7 +992,7 @@ async function startMitmServer() {
+@@ -898,22 +992,25 @@ async function startMitmServer() {
    server.headersTimeout = MITM_IDLE_TIMEOUT_MS; // time allowed to send headers
    server.keepAliveTimeout = MITM_IDLE_TIMEOUT_MS; // idle keep-alive window
  
@@ -213,3 +213,53 @@ index a36cae583..4d7463444 100644
      stats.startedAt = new Date().toISOString();
      writeStats();
      console.log(`🚀 MITM ready on :${LOCAL_PORT} → ${ROUTER_URL}`);
+   });
+ 
++  const sockets = new Set();
+   server.on("connection", (socket) => {
+     // Guard against double-counting: a CONNECT "target" tunnel re-emits an
+     // already-counted socket into the TLS layer via emit("connection") above.
+     if (socket.__mitmCounted) return;
+     socket.__mitmCounted = true;
++    sockets.add(socket);
+     // Reap idle sockets so hung connections cannot exhaust fds (Gap 10).
+     socket.setTimeout(MITM_IDLE_TIMEOUT_MS, () => socket.destroy());
+     stats.activeConnections++;
+     writeStats();
+     socket.on("close", () => {
++      sockets.delete(socket);
+       stats.activeConnections = Math.max(0, stats.activeConnections - 1);
+       writeStats();
+     });
+@@ -930,12 +1027,25 @@ async function startMitmServer() {
+     process.exit(1);
+   });
+ 
+-  process.on("SIGTERM", () => {
+-    server.close(() => process.exit(0));
+-  });
+-  process.on("SIGINT", () => {
+-    server.close(() => process.exit(0));
+-  });
++  let stopping = false;
++  const shutdown = () => {
++    if (stopping) return;
++    stopping = true;
++    // Incomplete TLS handshakes and CONNECT tunnels can retain a live PID
++    // after the listening socket closes, blocking recovery after a restart.
++    const deadline = setTimeout(() => {
++      for (const socket of sockets) socket.destroy();
++      process.exit(0);
++    }, 1000);
++    deadline.unref();
++    server.close(() => {
++      clearTimeout(deadline);
++      process.exit(0);
++    });
++    server.closeIdleConnections?.();
++  };
++  process.once("SIGTERM", shutdown);
++  process.once("SIGINT", shutdown);
+ }
+ 
+ startMitmServer().catch((err) => {
