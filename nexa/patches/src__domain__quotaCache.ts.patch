@@ -1,0 +1,365 @@
+diff --git a/src/domain/quotaCache.ts b/src/domain/quotaCache.ts
+index 4fdb474dc..c8da79bb6 100644
+--- a/src/domain/quotaCache.ts
++++ b/src/domain/quotaCache.ts
+@@ -8,7 +8,8 @@
+  *
+  * Background refresh runs every 1 minute:
+  *   - Active accounts (quota > 0%): refetch every 5 minutes
+- *   - Exhausted accounts: refetch every 5 minutes (or immediately after resetAt passes)
++ *   - Claude quota walls: wait for the reported reset, then verify usage before routing
++ *   - Failed/unknown reset checks: retry at most every 5 minutes
+  *
+  * @changes
+  * - [2026-07-24] [Composer] - Scope Antigravity per-model exhaustion to exact model + family weekly windows
+@@ -17,7 +18,7 @@
+  */
+ 
+ import { getUsageForProvider } from "@omniroute/open-sse/services/usage.ts";
+-import { getCachedProviderConnectionById } from "@/lib/db/readCache";
++import { getCachedProviderConnectionById, getCachedProviderConnections } from "@/lib/db/readCache";
+ import { resolveProxyForConnection } from "@/lib/db/settings";
+ import { runWithProxyContext } from "@omniroute/open-sse/utils/proxyFetch.ts";
+ import { safePercentage } from "@/shared/utils/formatting";
+@@ -27,6 +28,7 @@ import {
+   getLatestQuotaSnapshotsForConnection,
+ } from "@/lib/db/quotaSnapshots";
+ import { recordProviderQuotaResetEventIfChanged } from "@/lib/db/quotaResetEvents";
++import { getProviderLimitsCache, setProviderLimitsCache } from "@/lib/db/providerLimits";
+ import {
+   CODEX_SPARK_QUOTA_SESSION,
+   CODEX_SPARK_QUOTA_WEEKLY,
+@@ -56,6 +58,7 @@ import {
+   unmarkQuotaHealthy,
+   isQuotaHealthy,
+ } from "./quotaCacheState";
++import { getClaudeQuotaSchedule, shouldRefreshQuotaEntry } from "./claudeQuotaSchedule";
+ 
+ // #14359 — re-exported so existing callers (chat.ts, tests) keep importing from here. Only
+ // markQuotaHealthy has outside callers; the rest are internal and stay unexported (dead-code gate).
+@@ -82,7 +85,6 @@ export interface QuotaWindowObservation {
+ 
+ const ACTIVE_TTL_MS = 5 * 60 * 1000; // 5 minutes for active accounts
+ const EXHAUSTED_TTL_MS = 5 * 60 * 1000; // 5 minutes for 429-sourced entries (no resetAt)
+-const EXHAUSTED_REFRESH_MS = 5 * 60 * 1000; // 5 minutes: recheck exhausted accounts (aligned with TTL)
+ const REFRESH_INTERVAL_MS = 60 * 1000; // Background tick every 1 minute
+ export const DEFAULT_QUOTA_THRESHOLD_PERCENT = 99;
+ 
+@@ -286,6 +288,7 @@ function normalizeQuotas(rawQuotas: Record<string, unknown>): Record<string, Quo
+ 
+ export function __clearForTests() {
+   getState().cache.clear();
++  getState().refreshAttemptedAt.clear();
+ }
+ 
+ function resolveAntigravityQuotaWindowsForModel(
+@@ -437,10 +440,6 @@ function activeClaudeResetMs(quota: QuotaInfo, now: number): number | null {
+   return resetMs !== null && resetMs > now ? resetMs : null;
+ }
+ 
+-function isActiveClaudeExhaustion(quota: QuotaInfo, now: number): boolean {
+-  return activeClaudeResetMs(quota, now) !== null;
+-}
+-
+ function isClaudeQuotaExhaustedForRequest(
+   entry: QuotaCacheEntry,
+   requestedModel: string | null,
+@@ -464,7 +463,7 @@ function isClaudeQuotaExhaustedForRequest(
+   if (
+     globalWindows.some(
+       (quota) =>
+-        isActiveClaudeExhaustion(quota, now) &&
++        isBlockingClaudeQuota(quota) &&
+         (quota.claudeQuota.kind !== "session" || !sessionRecoveryEnabled)
+     )
+   ) {
+@@ -473,8 +472,7 @@ function isClaudeQuotaExhaustedForRequest(
+   if (!requestedModel) return isStandardQuotaExhausted(entry, now);
+   return scopedWindows.some(
+     (quota) =>
+-      isActiveClaudeExhaustion(quota, now) &&
+-      claudeQuotaMatchesModel(quota.claudeQuota, requestedModel)
++      isBlockingClaudeQuota(quota) && claudeQuotaMatchesModel(quota.claudeQuota, requestedModel)
+   );
+ }
+ 
+@@ -605,12 +603,18 @@ export function isQuotaExhaustedForRequest(
+   providerSpecificData?: unknown
+ ): boolean {
+   // #14359 — a recent successful dispatch stands the predicates down for a park window.
+-  if (isQuotaHealthy(connectionId)) return false;
++  if (isQuotaHealthy(connectionId) && resolveProviderId(provider) !== "claude") return false;
+   if (isClaudeExtraUsageAllowed(provider, providerSpecificData)) return false;
+   const entry = getState().cache.get(connectionId) || hydrateQuotaCacheFromSnapshots(connectionId);
+   if (!entry) return false;
+ 
+   const now = Date.now();
++  // A Claude wall is released by refreshed quota evidence, not the clock alone.
++  if (resolveProviderId(provider) === "claude") {
++    // A success on another model cannot release a scoped or newly observed wall.
++    if (isQuotaHealthy(connectionId) && !getClaudeQuotaSchedule(entry)) return false;
++    return isClaudeQuotaExhaustedForRequest(entry, requestedModel, now, providerSpecificData);
++  }
+   const advanced = advancedWindowResetAt(entry, now);
+   if (advanced) {
+     entry.exhausted = false;
+@@ -628,10 +632,6 @@ export function isQuotaExhaustedForRequest(
+     return isCodexQuotaExhausted(connectionId, entry, requestedModel);
+   }
+ 
+-  if (resolveProviderId(provider) === "claude") {
+-    return isClaudeQuotaExhaustedForRequest(entry, requestedModel, now, providerSpecificData);
+-  }
+-
+   // Standard (non-per-model-quota) providers: check connection-wide aggregate
+   return isStandardQuotaExhausted(entry, now);
+ }
+@@ -651,6 +651,16 @@ export function setQuotaCache(
+   // #4438 — capture the prior entry BEFORE overwriting the cache so we can skip
+   // redundant snapshot writes for idle connections whose quota didn't change.
+   const prior = getState().cache.get(connectionId);
++  // A missing/unknown usage response does not prove that a scheduled wall recovered.
++  if (
++    provider === "claude" &&
++    prior &&
++    getClaudeQuotaSchedule(prior) &&
++    ![...Object.values(quotas), ...Object.values(modelQuotas)].some(
++      (quota) => quota.claudeQuota !== undefined || quota.fractionReported !== false
++    )
++  )
++    return;
+   // A telemetry-only refresh is not evidence that a real upstream 429 has
+   // recovered. Keep its original timestamp so it can still expire normally.
+   if (
+@@ -672,12 +682,20 @@ export function setQuotaCache(
+     // #14359 — cap the park; keep the prior deadline while the streak continues (monitor rewrites must not extend it).
+     nextResetAt: exhausted ? preserveParkDeadline(earliestResetAt(quotas), prior) : null,
+   };
++  const claudeSchedule = getClaudeQuotaSchedule(entry);
++  if (claudeSchedule) {
++    entry.nextResetAt =
++      claudeSchedule.checkAt === null ? null : new Date(claudeSchedule.checkAt).toISOString();
++  }
+   getState().cache.set(connectionId, entry);
+ 
+   if (entry && rawQuotas) {
+-    for (const [windowKey, quotaInfo] of Object.entries(rawQuotas)) {
++    for (const [windowKey, quotaInfo] of Object.entries({
++      ...rawQuotas,
++      ...(provider === "claude" ? rawModelQuotas : {}),
++    })) {
+       if (!quotaInfo || typeof quotaInfo !== "object") continue;
+-      const normalized = quotas[windowKey];
++      const normalized = quotas[windowKey] || modelQuotas[windowKey];
+       if (!normalized) continue;
+       const { remainingPercentage } = normalized;
+       const fractionReported = normalized.fractionReported !== false;
+@@ -704,7 +722,10 @@ export function setQuotaCache(
+       // #4438 — only persist on the first observation or a real change.
+       if (
+         !quotaSnapshotChanged(prior, windowKey, remainingPercentage, windowExhausted) &&
+-        prior?.quotas?.[windowKey]?.fractionReported === normalized.fractionReported
++        prior?.quotas?.[windowKey]?.fractionReported === normalized.fractionReported &&
++        prior?.quotas?.[windowKey]?.resetAt === normalized.resetAt &&
++        JSON.stringify(prior?.quotas?.[windowKey]?.claudeQuota) ===
++          JSON.stringify(normalized.claudeQuota)
+       )
+         continue;
+       try {
+@@ -717,7 +738,14 @@ export function setQuotaCache(
+           next_reset_at: normalized.resetAt,
+           window_duration_ms: entry.windowDurationMs ?? null,
+           // Persist only the interpretation, never the raw provider payload.
+-          raw_data: fractionReported ? null : JSON.stringify({ fractionReported: false }),
++          raw_data: normalized.claudeQuota
++            ? JSON.stringify({
++                claudeQuota: normalized.claudeQuota,
++                ...(!fractionReported ? { fractionReported: false } : {}),
++              })
++            : fractionReported
++              ? null
++              : JSON.stringify({ fractionReported: false }),
+         });
+       } catch (error) {
+         console.error("[quotaCache] Failed to save snapshot:", error);
+@@ -746,6 +774,7 @@ function hydrateQuotaCacheFromSnapshots(connectionId: string): QuotaCacheEntry |
+   if (!snapshots.length) return null;
+ 
+   const quotas: Record<string, QuotaInfo> = {};
++  const modelQuotas: Record<string, QuotaInfo> = {};
+   let provider = "";
+   let fetchedAt = 0;
+   let windowDurationMs: number | null = null;
+@@ -764,10 +793,12 @@ function hydrateQuotaCacheFromSnapshots(connectionId: string): QuotaCacheEntry |
+     if (!windowKey) continue;
+     provider = provider || snapshot.provider || "";
+     let fractionReported: false | undefined;
++    let claudeQuota: ClaudeQuotaMetadata | undefined;
+     const rawData = camelSnapshot.rawData ?? snapshot.raw_data;
+     try {
+       const metadata = typeof rawData === "string" ? JSON.parse(rawData) : rawData;
+       if (metadata?.fractionReported === false) fractionReported = false;
++      if (isClaudeQuotaMetadata(metadata?.claudeQuota)) claudeQuota = metadata.claudeQuota;
+     } catch {
+       // Legacy snapshots need not contain JSON metadata.
+     }
+@@ -783,7 +814,28 @@ function hydrateQuotaCacheFromSnapshots(connectionId: string): QuotaCacheEntry |
+       ),
+       resetAt: camelSnapshot.nextResetAt ?? snapshot.next_reset_at ?? null,
+       fractionReported,
++      ...(claudeQuota ? { claudeQuota } : {}),
+     };
++    // Recover legacy global windows without treating unknown model labels as global walls.
++    if (
++      provider === "claude" &&
++      !claudeQuota &&
++      fractionReported !== false &&
++      (windowKey === "session (5h)" || windowKey === "weekly (7d)")
++    ) {
++      quotas[windowKey].claudeQuota = {
++        kind: windowKey === "session (5h)" ? "session" : "weekly_all",
++        active: quotas[windowKey].remainingPercentage <= 0,
++        severity: quotas[windowKey].remainingPercentage <= 0 ? "critical" : "normal",
++        scopeKey: null,
++        modelId: null,
++        modelDisplayName: null,
++      };
++    }
++    if (claudeQuota?.kind === "weekly_scoped") {
++      modelQuotas[windowKey] = quotas[windowKey];
++      delete quotas[windowKey];
++    }
+     const snapshotWindowDurationMs =
+       camelSnapshot.windowDurationMs ?? snapshot.window_duration_ms ?? null;
+     if (snapshotWindowDurationMs && snapshotWindowDurationMs > 0) {
+@@ -794,20 +846,24 @@ function hydrateQuotaCacheFromSnapshots(connectionId: string): QuotaCacheEntry |
+     if (createdAtMs !== null) fetchedAt = Math.max(fetchedAt, createdAtMs);
+   }
+ 
+-  if (Object.keys(quotas).length === 0) return null;
++  if (Object.keys(quotas).length === 0 && Object.keys(modelQuotas).length === 0) return null;
+   const exhausted = isExhausted(quotas);
+ 
+   const entry: QuotaCacheEntry = {
+     connectionId,
+     provider,
+     quotas,
+-    modelQuotas: {},
++    modelQuotas,
+     fetchedAt: fetchedAt || Date.now(),
+     exhausted,
+     // #14359 — cap the hydrated park relative to the snapshot's observation time.
+     nextResetAt: exhausted ? capParkWindow(earliestResetAt(quotas), fetchedAt || Date.now()) : null,
+     windowDurationMs,
+   };
++  const claudeSchedule = getClaudeQuotaSchedule(entry);
++  if (claudeSchedule)
++    entry.nextResetAt =
++      claudeSchedule.checkAt === null ? null : new Date(claudeSchedule.checkAt).toISOString();
+   cache.set(connectionId, entry);
+   return entry;
+ }
+@@ -958,6 +1014,11 @@ export function getQuotaSnapshotFetchedAt(connectionId: string): number | null {
+ export function markAccountExhaustedFrom429(connectionId: string, provider: string) {
+   // #14359 — a real upstream 429 is authoritative: drop any healthy override.
+   unmarkQuotaHealthy(connectionId);
++  const prior = getState().cache.get(connectionId) || hydrateQuotaCacheFromSnapshots(connectionId);
++  if (provider === "claude" && prior && getClaudeQuotaSchedule(prior)) {
++    prior.exhausted = true;
++    return;
++  }
+   getState().cache.set(connectionId, {
+     connectionId,
+     provider,
+@@ -975,6 +1036,7 @@ async function refreshEntry(entry: QuotaCacheEntry) {
+   const { cache, refreshingSet } = getState();
+   if (refreshingSet.has(entry.connectionId)) return;
+   refreshingSet.add(entry.connectionId);
++  getState().refreshAttemptedAt.set(entry.connectionId, Date.now());
+ 
+   try {
+     const connection = await getCachedProviderConnectionById(entry.connectionId);
+@@ -984,9 +1046,16 @@ async function refreshEntry(entry: QuotaCacheEntry) {
+     }
+ 
+     const proxyInfo = await resolveProxyForConnection(entry.connectionId);
+-    const usage = await runWithProxyContext(proxyInfo?.proxy || null, () =>
+-      getUsageForProvider(connection)
+-    );
++    const usage = await runWithProxyContext(proxyInfo?.proxy || null, async () => {
++      if (entry.provider !== "claude") return getUsageForProvider(connection);
++      // The existing per-connection mutex persists rotating tokens atomically.
++      const { checkAndRefreshToken } = await import("@/sse/services/tokenRefresh");
++      const fresh = await checkAndRefreshToken("claude", {
++        ...connection,
++        connectionId: entry.connectionId,
++      });
++      return getUsageForProvider(fresh);
++    });
+ 
+     if (usage?.quotas) {
+       setQuotaCache(
+@@ -995,6 +1064,18 @@ async function refreshEntry(entry: QuotaCacheEntry) {
+         usage.quotas,
+         usage.modelQuotas && typeof usage.modelQuotas === "object" ? usage.modelQuotas : {}
+       );
++      if (entry.provider === "claude" && getState().cache.get(entry.connectionId) !== entry) {
++        const previous = getProviderLimitsCache(entry.connectionId);
++        setProviderLimitsCache(entry.connectionId, {
++          ...previous,
++          quotas: usage.quotas,
++          modelQuotas: usage.modelQuotas || {},
++          plan: usage.plan ?? previous?.plan ?? null,
++          message: null,
++          fetchedAt: new Date().toISOString(),
++          source: "scheduled",
++        });
++      }
+     }
+   } catch (err) {
+     console.warn(
+@@ -1007,15 +1088,7 @@ async function refreshEntry(entry: QuotaCacheEntry) {
+ }
+ 
+ function needsRefresh(entry: QuotaCacheEntry, now: number): boolean {
+-  const age = now - entry.fetchedAt;
+-  if (entry.exhausted) {
+-    if (entry.nextResetAt) {
+-      const resetMs = parseDate(entry.nextResetAt);
+-      if (resetMs !== null && resetMs <= now) return true;
+-    }
+-    return age >= EXHAUSTED_REFRESH_MS;
+-  }
+-  return age >= ACTIVE_TTL_MS;
++  return shouldRefreshQuotaEntry(entry, now, getState().refreshAttemptedAt.get(entry.connectionId));
+ }
+ 
+ async function backgroundRefreshTick() {
+@@ -1046,6 +1119,27 @@ export function startBackgroundRefresh() {
+   if (state.refreshTimer) return;
+   state.refreshTimer = setInterval(backgroundRefreshTick, REFRESH_INTERVAL_MS);
+   state.refreshTimer?.unref?.();
++  // Reconstruct scheduled walls from durable snapshots even before the first chat.
++  void getCachedProviderConnections({ provider: "claude", isActive: true })
++    .then((connections) => {
++      for (const connection of connections) {
++        if (
++          connection &&
++          typeof connection === "object" &&
++          "id" in connection &&
++          typeof connection.id === "string"
++        ) {
++          hydrateQuotaCacheFromSnapshots(connection.id);
++        }
++      }
++      return backgroundRefreshTick();
++    })
++    .catch((error: unknown) => {
++      console.warn(
++        "[QuotaCache] Startup hydration failed:",
++        error instanceof Error ? error.message : "Unknown error"
++      );
++    });
+ }
+ 
+ /**

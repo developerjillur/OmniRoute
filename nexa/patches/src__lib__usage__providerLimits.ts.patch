@@ -1,0 +1,53 @@
+diff --git a/src/lib/usage/providerLimits.ts b/src/lib/usage/providerLimits.ts
+index 5c4d4bb99..cd4db90ae 100644
+--- a/src/lib/usage/providerLimits.ts
++++ b/src/lib/usage/providerLimits.ts
+@@ -13,7 +13,8 @@ import {
+   type ProviderLimitsCacheEntry,
+ } from "@/lib/db/providerLimits";
+ import { syncToCloud } from "@/lib/cloudSync";
+-import { setQuotaCache } from "@/domain/quotaCache";
++import { getQuotaCache, setQuotaCache } from "@/domain/quotaCache";
++import { getClaudeQuotaSchedule } from "@/domain/claudeQuotaSchedule";
+ import { buildClaudeExtraUsageConnectionUpdate } from "@/lib/providers/claudeExtraUsage";
+ import { clearRecoveredProviderState } from "@/sse/services/auth";
+ import { getMachineId } from "@/shared/utils/machine";
+@@ -971,11 +972,13 @@ export async function syncAllProviderLimits(
+   const caches: Record<string, ProviderLimitsCacheEntry> = {};
+   const errors: Record<string, string> = {};
+ 
++  let succeeded = 0;
+   const recordResult = (
+     connectionId: string,
+     result: PromiseSettledResult<{ connectionId: string; cache: ProviderLimitsCacheEntry }>
+   ) => {
+     if (result.status === "fulfilled") {
++      succeeded++;
+       const { cache } = result.value;
+       const previous = getProviderLimitsCache(connectionId);
+       if (cache === previous) {
+@@ -992,6 +995,13 @@ export async function syncAllProviderLimits(
+ 
+   const fetchOne = async (connection: ProviderConnectionLike) => {
+     const existingCache = getProviderLimitsCache(connection.id);
++    const quotaEntry = connection.provider === "claude" ? getQuotaCache(connection.id) : null;
++    const checkAt = quotaEntry ? getClaudeQuotaSchedule(quotaEntry)?.checkAt : null;
++    // The reset scheduler owns exhausted Claude checks. Bulk automatic refresh
++    // must not keep probing a known future wall; manual Refresh remains available.
++    if (source === "scheduled" && existingCache && checkAt && checkAt > Date.now()) {
++      return { connectionId: connection.id, cache: existingCache };
++    }
+     const forceRefresh =
+       source === "manual" ||
+       shouldRefreshProviderLimitsCache(connection, existingCache || undefined);
+@@ -1035,8 +1045,8 @@ export async function syncAllProviderLimits(
+ 
+   return {
+     total: connections.length,
+-    succeeded: cacheEntries.length,
+-    failed: connections.length - cacheEntries.length,
++    succeeded,
++    failed: connections.length - succeeded,
+     caches,
+     errors,
+   };

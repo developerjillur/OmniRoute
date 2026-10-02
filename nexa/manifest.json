@@ -7,13 +7,13 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 97,
-    "patches": 64,
-    "new": 31,
+    "total": 102,
+    "patches": 67,
+    "new": 33,
     "tooling": 2,
     "upstreamCandidates": 10,
     "nexaSpecific": 23,
-    "needsReview": 64,
+    "needsReview": 69,
     "pendingUpstreamPR": 12,
     "mergedUpstreamPR": 1
   },
@@ -365,6 +365,22 @@
       }
     },
     {
+      "file": "patches/src__domain__quotaCache.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/domain/quotaCache.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__domain__quotaCacheState.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/domain/quotaCacheState.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/src__i18n__messages__en.json.patch",
       "layer": "patch",
       "class": "needs-review",
@@ -433,6 +449,14 @@
       "layer": "patch",
       "class": "needs-review",
       "target": "src/lib/system/autoUpdate.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__lib__usage__providerLimits.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/lib/usage/providerLimits.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },
@@ -641,6 +665,14 @@
       }
     },
     {
+      "file": "new/src/domain/claudeQuotaSchedule.ts",
+      "layer": "new",
+      "class": "needs-review",
+      "target": "src/domain/claudeQuotaSchedule.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
       "file": "new/src/lib/nexa/reasoningElicitation.ts",
       "layer": "new",
       "class": "needs-review",
@@ -742,6 +774,14 @@
         "pr": 15323,
         "state": "OPEN"
       }
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-quota-recovery.test.ts",
+      "layer": "new",
+      "class": "needs-review",
+      "target": "tests/unit/agent-bridge-quota-recovery.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
     },
     {
       "file": "new/tests/unit/agent-bridge-resilience.test.ts",
