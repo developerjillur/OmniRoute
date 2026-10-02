@@ -41,3 +41,13 @@ Production standalone build, package policy and source/dist Bridge equality pass
 Deployment promotes the installed isolated prefix atomically after preserving runtime extras and the whole previous prefix. Rollback renames that exact prior prefix back into place. Native TLS ingress, explicit Start/Stop, cold service restart and fault-injected rollback must be verified on the live machine independently.
 
 Generic transport proposal: https://github.com/diegosouzapw/OmniRoute/pull/15323 (draft). Local macOS ingress/recovery/update policy remains in this fork.
+
+## Live acceptance on 2026-10-02
+
+A native Opus request with low effort and a native Sonnet request with high effort both returned the expected marker through the installed Bridge, using first-party Max login without API-base overrides. Service restart recovered the enabled listener. Dashboard Stop persisted false and survived a further service restart. With no cached administrator password, hosts entries remain; the independent loopback ingress forwards untouched TLS directly to Anthropic while the listener is stopped. A no-credential native HTTPS request reached Anthropic with certificate validation enabled and received the expected 401. Dashboard Start restored the preserved mappings.
+
+The first candidate was rejected because the CLI port preflight treated an IDE client connection as a listener. Restricting POSIX discovery to TCP LISTEN sockets fixes that false positive; its regression fails before the change and passes after. All 16 preflight tests pass. The corrected archive was smoked out of band before promotion.
+
+A fault archive deliberately returned an invalid native transport health response. The updater rejected it and restored the complete previous runtime; both native ingress and backend TLS passed afterwards. Rollback also restores the consistent pre-deployment SQLite snapshot after closing the service, retaining the post-deployment database and WAL files. A future-schema fixture verifies the old schema and configuration are recovered without deleting the failed migration evidence.
+
+The dedicated macOS ingress installer has run on the machine. LaunchDaemon RunAtLoad/KeepAlive and LaunchAgent recovery are configured; a further full Mac reboot after the new build was not performed during this acceptance run. Two active Claude OAuth connections were observed during final configuration review; the third connection remains an owner sign-in step.

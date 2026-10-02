@@ -1,0 +1,13 @@
+diff --git a/bin/cli/utils/pid.mjs b/bin/cli/utils/pid.mjs
+index b72b21e9f..fc224ead5 100644
+--- a/bin/cli/utils/pid.mjs
++++ b/bin/cli/utils/pid.mjs
+@@ -83,7 +83,7 @@ export async function findListeningPids(port, deps = {}) {
+       const { stdout } = await exec("netstat", ["-ano"]);
+       return parseNetstatListeningPids(stdout, port);
+     }
+-    const { stdout } = await exec("lsof", ["-ti", `:${port}`]);
++    const { stdout } = await exec("lsof", ["-nP", "-t", `-iTCP:${port}`, "-sTCP:LISTEN"]);
+     return stdout
+       .trim()
+       .split("\n")

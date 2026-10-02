@@ -26,6 +26,9 @@ export function verifyPackage(archive) {
   }).split("\n");
   const read = (member) =>
     execFileSync("tar", ["-xOf", archive, member], { maxBuffer: 16 * 1024 * 1024 });
+  const cliPid = read("package/bin/cli/utils/pid.mjs").toString();
+  if (!cliPid.includes('"-sTCP:LISTEN"'))
+    throw new Error("Archive has the client-socket false-positive startup bug");
   const source = read("package/src/mitm/server.cjs");
   const dist = read("package/dist/src/mitm/server.cjs");
   if (!source.equals(dist) || !inspectServerContract(source.toString()))

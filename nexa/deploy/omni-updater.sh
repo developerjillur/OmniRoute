@@ -87,12 +87,14 @@ else say "WARNING: desktop build failed; installed shell will be retained"; fi
 node nexa/restore.mjs
 git checkout upstream-main -- bin/cli/api-commands electron/package-lock.json
 fi
+mkdir -p "$OUTDIR"
 node "$TOOLS/bridge-gate.mjs" package "$TGZ" > "$OUTDIR/bridge-package-verification.json"
 SMOKE_ROOT="$BUILDS/smoke-$STAMP"
 node "$TOOLS/smoke-package.mjs" "$TGZ" "$SMOKE_ROOT" > "$OUTDIR/isolated-smoke-$STAMP.json" || fail "Isolated package smoke failed; live service untouched"
 if [ "$MODE" = build-only ]; then status ok "verified package built at $TGZ; live service untouched"; exit 0; fi
 cd "$REPO"
-python3 "$TOOLS/snapshot-local.py" "$DATA_DIR/update-backups/$STAMP" > "$OUTDIR/private-backup-location.json"
+BACKUP_DIR="$DATA_DIR/update-backups/$STAMP"
+python3 "$TOOLS/snapshot-local.py" "$BACKUP_DIR" > "$OUTDIR/private-backup-location.json"
 PREV="$(cat "$BUILDS/current")"
 node "$TOOLS/bridge-gate.mjs" package "$PREV" || fail "Rollback package lacks Bridge fixes; establish a verified rollback package before deploying"
 status running "installing $VER ($SHA); verified rollback package preserved"
@@ -130,8 +132,8 @@ else
   status running "deploy failed; restoring the verified previous Bridge build"
   stop_svc
   [ ! -e "$RUNTIME" ] || mv "$RUNTIME" "$FAILED_RUNTIME"
-  if mv "$RUNTIME_BACKUP" "$RUNTIME" && start_svc && wait_ready; then
-    fail "New build rejected; previous service and Bridge restored"
+  if mv "$RUNTIME_BACKUP" "$RUNTIME" && python3 "$TOOLS/restore-local-database.py" "$DATA_DIR" "$BACKUP_DIR/storage.sqlite" "$BUILDS/runtime-backups/failed-data-$STAMP" && start_svc && wait_ready; then
+    fail "New build rejected; previous service, database and Bridge restored"
   else fail "ROLLBACK FAILED: inspect service and Bridge logs"; fi
 fi
 # Preserve archives and isolated build evidence; cleanup is an explicit owner operation.

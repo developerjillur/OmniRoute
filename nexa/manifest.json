@@ -7,14 +7,14 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 68,
-    "patches": 44,
+    "total": 70,
+    "patches": 46,
     "new": 22,
     "tooling": 2,
     "upstreamCandidates": 2,
     "nexaSpecific": 19,
-    "needsReview": 47,
-    "pendingUpstreamPR": 0,
+    "needsReview": 49,
+    "pendingUpstreamPR": 4,
     "mergedUpstreamPR": 0
   },
   "items": [
@@ -65,6 +65,17 @@
       "target": "bin/cli/commands/doctor.mjs",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
+    },
+    {
+      "file": "patches/bin__cli__utils__pid.mjs.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "bin/cli/utils/pid.mjs",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/bin__omniroute.mjs.patch",
@@ -331,7 +342,10 @@
       "class": "upstream-candidate",
       "target": "src/mitm/server.cjs",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/src__shared__network__safeOutboundFetch.ts.patch",
@@ -364,6 +378,17 @@
       "target": "tests/unit/classify429.test.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
+    },
+    {
+      "file": "patches/tests__unit__cli-serve-port-in-use-preflight.test.mjs.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "tests/unit/cli-serve-port-in-use-preflight.test.mjs",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/tsconfig.patch",
@@ -494,7 +519,10 @@
       "class": "upstream-candidate",
       "target": "tests/unit/agent-bridge-native-transport.test.ts",
       "conflictRisk": "none",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
     },
     {
       "file": "new/tests/unit/agent-bridge-runtime-state.test.ts",
