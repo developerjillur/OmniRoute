@@ -1,0 +1,23 @@
+diff --git a/src/lib/resilience/settings/normalize.ts b/src/lib/resilience/settings/normalize.ts
+index 513f3d3fc..ab9cff942 100644
+--- a/src/lib/resilience/settings/normalize.ts
++++ b/src/lib/resilience/settings/normalize.ts
+@@ -319,7 +319,17 @@ export function normalizeQuotaPreflightSettings(
+     fallback.providerWindowDefaults
+   );
+   const enabled = typeof record.enabled === "boolean" ? record.enabled : fallback.enabled;
+-  return { enabled, defaultThresholdPercent, warnThresholdPercent, providerWindowDefaults };
++  const cachedQuotaFilteringEnabled = toBoolean(
++    record.cachedQuotaFilteringEnabled,
++    fallback.cachedQuotaFilteringEnabled !== false
++  );
++  return {
++    enabled,
++    cachedQuotaFilteringEnabled,
++    defaultThresholdPercent,
++    warnThresholdPercent,
++    providerWindowDefaults,
++  };
+ }
+ 
+ export function normalizeWaitForCooldownSettings(

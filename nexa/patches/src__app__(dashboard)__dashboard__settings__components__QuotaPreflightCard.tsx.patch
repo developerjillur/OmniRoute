@@ -1,0 +1,54 @@
+diff --git a/src/app/(dashboard)/dashboard/settings/components/QuotaPreflightCard.tsx b/src/app/(dashboard)/dashboard/settings/components/QuotaPreflightCard.tsx
+index 2ba4a1ed1..5a28c540b 100644
+--- a/src/app/(dashboard)/dashboard/settings/components/QuotaPreflightCard.tsx
++++ b/src/app/(dashboard)/dashboard/settings/components/QuotaPreflightCard.tsx
+@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
+ import { NumberField } from "./ResilienceFields";
+ 
+ type QuotaPreflightSettings = {
++  cachedQuotaFilteringEnabled: boolean;
+   enabled: boolean;
+   defaultThresholdPercent: number;
+   warnThresholdPercent: number;
+@@ -45,6 +46,7 @@ export default function QuotaPreflightCard() {
+         const qp = resilience.quotaPreflight;
+         if (qp) {
+           setValue({
++            cachedQuotaFilteringEnabled: qp.cachedQuotaFilteringEnabled !== false,
+             enabled: qp.enabled === true,
+             defaultThresholdPercent: Number(qp.defaultThresholdPercent ?? 2),
+             warnThresholdPercent: Number(qp.warnThresholdPercent ?? 20),
+@@ -76,6 +78,7 @@ export default function QuotaPreflightCard() {
+       const qp = json.quotaPreflight;
+       if (qp) {
+         setValue({
++          cachedQuotaFilteringEnabled: qp.cachedQuotaFilteringEnabled !== false,
+           enabled: qp.enabled === true,
+           defaultThresholdPercent: Number(qp.defaultThresholdPercent ?? 2),
+           warnThresholdPercent: Number(qp.warnThresholdPercent ?? 20),
+@@ -140,6 +143,25 @@ export default function QuotaPreflightCard() {
+           />
+         </div>
+ 
++        <div className="flex items-start sm:items-center justify-between gap-4 pt-2 border-t border-border/50">
++          <div className="flex-1 min-w-0">
++            <p className="font-medium text-sm sm:text-base">Cached quota filtering</p>
++            <p className="text-xs sm:text-sm text-text-muted">
++              Skip accounts based on cached quota telemetry. Turn off to let upstream requests
++              determine availability. This does not change provider subscription limits or enable
++              paid extra usage.
++            </p>
++          </div>
++          <Toggle
++            ariaLabel="Cached quota filtering"
++            checked={value.cachedQuotaFilteringEnabled}
++            disabled={saving}
++            onChange={() =>
++              save({ cachedQuotaFilteringEnabled: !value.cachedQuotaFilteringEnabled })
++            }
++          />
++        </div>
++
+         {value.enabled && (
+           <>
+             <div className="flex items-start sm:items-center justify-between gap-4 pt-2 border-t border-border/50">

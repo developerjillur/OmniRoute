@@ -1,0 +1,13 @@
+diff --git a/src/lib/resilience/settings/types.ts b/src/lib/resilience/settings/types.ts
+index 028cf113b..b20953147 100644
+--- a/src/lib/resilience/settings/types.ts
++++ b/src/lib/resilience/settings/types.ts
+@@ -148,6 +148,8 @@ export interface ProviderCooldownSettings {
+ }
+ 
+ export interface QuotaPreflightSettings {
++  /** Allow cached quota telemetry to exclude accounts before dispatch. Default: true. */
++  cachedQuotaFilteringEnabled?: boolean;
+   /**
+    * Master switch for the auto-routing quota cutoff (buildAutoCandidates). When
+    * disabled (default), candidates are NOT dropped for low quota before scoring —

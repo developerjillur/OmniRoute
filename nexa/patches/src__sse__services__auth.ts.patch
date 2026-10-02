@@ -1,0 +1,68 @@
+diff --git a/src/sse/services/auth.ts b/src/sse/services/auth.ts
+index d22d86d41..2b8173635 100644
+--- a/src/sse/services/auth.ts
++++ b/src/sse/services/auth.ts
+@@ -1263,6 +1263,8 @@ export async function getProviderCredentials(
+     // Fetched early so the session-affinity-pin override (#5903) can consult
+     // the TTL before forcedConnectionId narrows the connection pool.
+     const settings = await getSettings();
++    const cachedQuotaFilteringEnabled =
++      resolveResilienceSettings(settings).quotaPreflight.cachedQuotaFilteringEnabled !== false;
+     const sessionAffinityTtlMs = resolveSessionAffinityTtlMs(provider, options, settings);
+ 
+     // Fix #922: Check for aliases (nvidia/nvidia_nim) to ensure credentials are found
+@@ -1367,8 +1369,9 @@ export async function getProviderCredentials(
+         excludedConnectionIds,
+         connections,
+         allowRateLimitedConnections,
+-        bypassQuotaPolicy,
++        bypassQuotaPolicy: bypassQuotaPolicy || !cachedQuotaFilteringEnabled,
+         isQuotaExhausted: (connectionId) => {
++          if (!cachedQuotaFilteringEnabled) return false;
+           const conn = connections.find((candidate) => candidate.id === connectionId);
+           return isQuotaExhaustedForRequest(
+             connectionId,
+@@ -1798,7 +1801,7 @@ export async function getProviderCredentials(
+       }
+     }
+ 
+-    if (!bypassQuotaPolicy) {
++    if (!bypassQuotaPolicy && cachedQuotaFilteringEnabled) {
+       policyEligibleConnections = peakHourEligibleConnections.filter((connection) => {
+         const evaluation = evaluateQuotaLimitPolicy(provider, connection, requestedModel);
+         quotaResults.set(connection.id, { blocked: evaluation.blocked, exhausted: false });
+@@ -1872,12 +1875,9 @@ export async function getProviderCredentials(
+     const withQuota: typeof policyEligibleConnections = [];
+     const exhaustedQuota: typeof policyEligibleConnections = [];
+     for (const c of policyEligibleConnections) {
+-      const exhausted = isQuotaExhaustedForRequest(
+-        c.id,
+-        provider,
+-        requestedModel,
+-        c.providerSpecificData
+-      );
++      const exhausted =
++        cachedQuotaFilteringEnabled &&
++        isQuotaExhaustedForRequest(c.id, provider, requestedModel, c.providerSpecificData);
+       const existing = quotaResults.get(c.id);
+       if (existing) existing.exhausted = exhausted;
+       if (!exhausted) {
+@@ -2282,6 +2282,18 @@ export async function getProviderCredentialsWithQuotaPreflight(
+   );
+ 
+   const resilience = resolveResilienceSettings(await getCachedSettings());
++  if (resilience.quotaPreflight.cachedQuotaFilteringEnabled === false) {
++    return getProviderCredentials(
++      provider,
++      excludeConnectionId,
++      allowedConnections,
++      requestedModel,
++      {
++        ...options,
++        bypassQuotaPolicy: true,
++      }
++    );
++  }
+   const { defaultThresholdPercent, warnThresholdPercent, providerWindowDefaults } =
+     resilience.quotaPreflight;
+   const providerWindowMap = providerWindowDefaults[provider] || {};

@@ -7,13 +7,13 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 86,
-    "patches": 55,
-    "new": 29,
+    "total": 92,
+    "patches": 60,
+    "new": 30,
     "tooling": 2,
     "upstreamCandidates": 9,
     "nexaSpecific": 19,
-    "needsReview": 58,
+    "needsReview": 64,
     "pendingUpstreamPR": 12,
     "mergedUpstreamPR": 1
   },
@@ -242,6 +242,14 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/src__app__(dashboard)__dashboard__settings__components__QuotaPreflightCard.tsx.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/app/(dashboard)/dashboard/settings/components/QuotaPreflightCard.tsx",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/src__app__(dashboard)__dashboard__tools__agent-bridge__components__AgentCard.tsx.patch",
       "layer": "patch",
       "class": "nexa-specific",
@@ -373,6 +381,30 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/src__lib__resilience__settings.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/lib/resilience/settings.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__lib__resilience__settings__normalize.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/lib/resilience/settings/normalize.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__lib__resilience__settings__types.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/lib/resilience/settings/types.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/src__lib__system__autoUpdate.ts.patch",
       "layer": "patch",
       "class": "needs-review",
@@ -431,6 +463,14 @@
       "layer": "patch",
       "class": "needs-review",
       "target": "src/shared/validation/schemas/settings.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__sse__services__auth.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/sse/services/auth.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },
@@ -608,6 +648,14 @@
       "layer": "new",
       "class": "nexa-specific",
       "target": "src/mitm/runtimeState.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-cached-quota-settings.test.mjs",
+      "layer": "new",
+      "class": "needs-review",
+      "target": "tests/unit/agent-bridge-cached-quota-settings.test.mjs",
       "conflictRisk": "none",
       "upstreamPR": null
     },

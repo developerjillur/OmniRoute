@@ -70,6 +70,7 @@ fi
 cd "$BUILD_TREE"
 node nexa/apply.mjs
 if ! (
+  npx --no-install fumadocs-mdx &&
   npm run typecheck:core &&
   node --test nexa/deploy/bootstrap-launchdaemon.test.mjs nexa/deploy/native-ingress.test.mjs nexa/deploy/ensure-free-space.test.mjs nexa/deploy/stop-owned-bridge.test.mjs &&
   NODE_OPTIONS=--max-old-space-size=8192 node scripts/check/check-tsc-ratchet.mjs --ratchet | tee "$OUTDIR/tsc-ratchet.log" &&
