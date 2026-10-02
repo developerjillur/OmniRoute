@@ -1,5 +1,7 @@
 {
-  "_comment": "TypeScript-error ratchet baseline. direction: down (can only shrink). `--update` only LOWERS it; when an upstream merge legitimately raises the count (their new code, not our regression), set `value` here by hand. 2965=v3.8.44 fork base; 3014=v3.8.45 (upstream added ~49 errors — verified our customizations add 0). Removal target: reach 0, then re-enable next.config typescript.ignoreBuildErrors:false.",
-  "value": 3014,
-  "direction": "down"
+  "_comment": "Full-scope TypeScript backlog for v3.8.51, measured on Node 24.15.0. Pristine upstream: 5875; applied overlay: 5830; new Bridge files: 0 diagnostics. Previous 3014 was the stale v3.8.45 baseline. See nexa/docs/TYPECHECK-BASELINE-2026-10-02.md. Future measured regressions block updates; --update can only lower this value.",
+  "value": 5830,
+  "direction": "down",
+  "upstreamBaseVersion": "3.8.51",
+  "verifiedUpstreamValue": 5875
 }

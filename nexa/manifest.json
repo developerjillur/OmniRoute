@@ -7,12 +7,12 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 67,
-    "patches": 43,
+    "total": 68,
+    "patches": 44,
     "new": 22,
     "tooling": 2,
     "upstreamCandidates": 2,
-    "nexaSpecific": 18,
+    "nexaSpecific": 19,
     "needsReview": 47,
     "pendingUpstreamPR": 0,
     "mergedUpstreamPR": 0
@@ -362,6 +362,14 @@
       "layer": "patch",
       "class": "needs-review",
       "target": "tests/unit/classify429.test.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/tsconfig.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "tsconfig.json",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },

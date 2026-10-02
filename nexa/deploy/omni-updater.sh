@@ -30,7 +30,7 @@ if ! mkdir "$BUILDS/.lock" 2>/dev/null; then
   mkdir "$BUILDS/.lock"
 fi
 printf '%s\n' "$$" > "$BUILDS/.lock/pid"
-trap 'rm -f "$BUILDS/.lock/pid"; rmdir "$BUILDS/.lock" 2>/dev/null || true' EXIT
+trap 'node "$TOOLS/release-lock.mjs" "$BUILDS/.lock" "$$"' EXIT
 cd "$REPO"
 [ "$(git branch --show-current)" = nexalance ] || fail "Source is not on nexalance"
 [ -z "$(git status --porcelain)" ] || fail "Source tree has uncommitted changes; live service untouched"
@@ -41,7 +41,10 @@ if [ "$MODE" = update ]; then
   if ! node nexa/update.mjs > "$BUILDS/update-$STAMP.log" 2>&1; then fail "Upstream update failed; live service untouched"; fi
   if ! node nexa/apply.mjs --check; then fail "An overlay patch needs review; live service untouched"; fi
   SHA="$(git rev-parse --short HEAD)"
-  if [ -f "$BUILDS/current" ] && grep -q -- "-$SHA/" "$BUILDS/current"; then status ok "already running the newest verified build"; exit 0; fi
+  if [ -f "$BUILDS/current" ] && grep -q -- "-$SHA/" "$BUILDS/current"; then
+    node "$TOOLS/bridge-gate.mjs" package "$(cat "$BUILDS/current")" && healthy && node "$TOOLS/bridge-gate.mjs" live "$DATA_DIR" || fail "Current service or native Bridge failed verification"
+    status ok "already running the newest verified build"; exit 0
+  fi
 fi
 SHA="$(git rev-parse --short HEAD)"
 VER="$(node -p 'require("./package.json").version')"
@@ -85,15 +88,25 @@ node nexa/restore.mjs
 git checkout upstream-main -- bin/cli/api-commands electron/package-lock.json
 fi
 node "$TOOLS/bridge-gate.mjs" package "$TGZ" > "$OUTDIR/bridge-package-verification.json"
-node "$TOOLS/smoke-package.mjs" "$TGZ" "$BUILDS/smoke-$STAMP" > "$OUTDIR/isolated-smoke-$STAMP.json" || fail "Isolated package smoke failed; live service untouched"
+SMOKE_ROOT="$BUILDS/smoke-$STAMP"
+node "$TOOLS/smoke-package.mjs" "$TGZ" "$SMOKE_ROOT" > "$OUTDIR/isolated-smoke-$STAMP.json" || fail "Isolated package smoke failed; live service untouched"
 if [ "$MODE" = build-only ]; then status ok "verified package built at $TGZ; live service untouched"; exit 0; fi
 cd "$REPO"
 python3 "$TOOLS/snapshot-local.py" "$DATA_DIR/update-backups/$STAMP" > "$OUTDIR/private-backup-location.json"
 PREV="$(cat "$BUILDS/current")"
 node "$TOOLS/bridge-gate.mjs" package "$PREV" || fail "Rollback package lacks Bridge fixes; establish a verified rollback package before deploying"
 status running "installing $VER ($SHA); verified rollback package preserved"
+STAGED_RUNTIME="$SMOKE_ROOT/runtime"
+RUNTIME_BACKUP="$BUILDS/runtime-backups/$STAMP"
+FAILED_RUNTIME="$BUILDS/runtime-backups/failed-$STAMP"
+mkdir -p "$BUILDS/runtime-backups"
+[ ! -e "$RUNTIME_BACKUP" ] && [ ! -e "$FAILED_RUNTIME" ] || fail "Runtime backup destination exists; live service untouched"
+python3 "$TOOLS/preserve-runtime-extras.py" "$RUNTIME" "$STAGED_RUNTIME"
+say "Promoting $STAGED_RUNTIME; preserving the complete current prefix at $RUNTIME_BACKUP"
 stop_svc
-if "${NPM[@]}" install -g --prefix "$RUNTIME" --no-fund --no-audit "$TGZ" && start_svc && wait_ready; then
+mv "$RUNTIME" "$RUNTIME_BACKUP"
+if mv "$STAGED_RUNTIME" "$RUNTIME" && start_svc && wait_ready; then
+  printf '%s\n' "$RUNTIME_BACKUP" > "$BUILDS/previous-runtime"
   printf '%s\n' "$PREV" > "$BUILDS/previous"
   printf '%s\n' "$TGZ" > "$BUILDS/current"
   if [ -d "$OUTDIR/OmniRoute.app" ]; then
@@ -116,7 +129,8 @@ if "${NPM[@]}" install -g --prefix "$RUNTIME" --no-fund --no-audit "$TGZ" && sta
 else
   status running "deploy failed; restoring the verified previous Bridge build"
   stop_svc
-  if "${NPM[@]}" install -g --prefix "$RUNTIME" --no-fund --no-audit "$PREV" && start_svc && wait_ready; then
+  [ ! -e "$RUNTIME" ] || mv "$RUNTIME" "$FAILED_RUNTIME"
+  if mv "$RUNTIME_BACKUP" "$RUNTIME" && start_svc && wait_ready; then
     fail "New build rejected; previous service and Bridge restored"
   else fail "ROLLBACK FAILED: inspect service and Bridge logs"; fi
 fi

@@ -1,0 +1,12 @@
+diff --git a/tsconfig.json b/tsconfig.json
+index 58a407464..1a5ba1c37 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -44,6 +44,7 @@
+     ".build/next/dev/dev/types/**/*.ts"
+   ],
+   "exclude": [
++    "nexa",
+     "node_modules",
+     "electron/node_modules",
+     "electron/dist-electron",

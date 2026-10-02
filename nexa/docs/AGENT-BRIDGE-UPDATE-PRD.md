@@ -33,3 +33,11 @@ The previous nginx ingress depended on Local being open and caused native login 
 The local readiness and Bridge socket windows are 600 seconds. A verified log showed a long Opus request cut off by the former 95-second content readiness watchdog. The longer window preserves normal fast responses while giving long reasoning more time; it does not guarantee availability when the provider itself fails.
 
 The updater preserves existing archives, uses isolated worktrees and out-of-band package smoke, rejects unmeasured TypeScript gates, and checks both native ingress and backend TLS. An interrupted update lock is recoverable. Desktop rebuild remains best effort and preserves the last working shell. Source deployment tools are versioned under nexa/deploy; the installed command must prefer these over the older portable kit script.
+
+## Accepted package gates
+
+Production standalone build, package policy and source/dist Bridge equality passed. Isolated package smoke passed management authentication, configured port 8443, catalog authentication, a real Opus message and browser CORS isolation. Bridge/security regression gate: 54 tests; broader Bridge tests: 315; service Vitest: 493. Core typecheck passed. Full-scope ratchet uses the documented inherited v3.8.51 baseline, not a zero-error claim.
+
+Deployment promotes the installed isolated prefix atomically after preserving runtime extras and the whole previous prefix. Rollback renames that exact prior prefix back into place. Native TLS ingress, explicit Start/Stop, cold service restart and fault-injected rollback must be verified on the live machine independently.
+
+Generic transport proposal: https://github.com/diegosouzapw/OmniRoute/pull/15323 (draft). Local macOS ingress/recovery/update policy remains in this fork.

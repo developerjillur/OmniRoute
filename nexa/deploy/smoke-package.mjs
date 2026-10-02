@@ -8,43 +8,56 @@ import { pathToFileURL } from "node:url";
 const [archive, destination] = process.argv.slice(2);
 if (!archive || !destination) throw Error("usage: smoke-package.mjs <archive> <new destination>");
 const root = path.resolve(destination);
-fs.mkdirSync(root, { mode: 0o700 });
+const reuse = process.argv.includes("--reuse");
+if (!reuse) fs.mkdirSync(root, { mode: 0o700 });
 const prefix = path.join(root, "runtime"),
   data = path.join(root, "data");
-fs.mkdirSync(data, { mode: 0o700 });
 const original = path.join(os.homedir(), ".omniroute-local");
-fs.copyFileSync(path.join(original, ".env"), path.join(data, ".env"));
-fs.chmodSync(path.join(data, ".env"), 0o600);
-execFileSync("python3", [
-  "-c",
-  'import sqlite3,sys; source=sqlite3.connect("file:"+sys.argv[1]+"?mode=ro",uri=True); dest=sqlite3.connect(sys.argv[2]); source.backup(dest); dest.close(); source.close()',
-  path.join(original, "storage.sqlite"),
-  path.join(data, "storage.sqlite"),
-]);
-fs.chmodSync(path.join(data, "storage.sqlite"), 0o600);
-const installLog = fs.openSync(path.join(root, "install.log"), "w", 0o600);
-execFileSync(
-  "/usr/local/bin/node",
-  [
-    "/usr/local/lib/node_modules/npm/bin/npm-cli.js",
-    "install",
-    "-g",
-    "--prefix",
-    prefix,
-    "--no-fund",
-    "--no-audit",
-    path.resolve(archive),
-  ],
-  {
-    stdio: ["ignore", installLog, installLog],
-    env: {
-      ...process.env,
-      PATH: "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin",
-      DATA_DIR: data,
-    },
-  }
+if (!reuse) {
+  fs.mkdirSync(data, { mode: 0o700 });
+  fs.copyFileSync(path.join(original, ".env"), path.join(data, ".env"));
+  fs.chmodSync(path.join(data, ".env"), 0o600);
+  execFileSync("python3", [
+    "-c",
+    'import sqlite3,sys; source=sqlite3.connect("file:"+sys.argv[1]+"?mode=ro",uri=True); dest=sqlite3.connect(sys.argv[2]); source.backup(dest); dest.close(); source.close()',
+    path.join(original, "storage.sqlite"),
+    path.join(data, "storage.sqlite"),
+  ]);
+  fs.chmodSync(path.join(data, "storage.sqlite"), 0o600);
+  const installLog = fs.openSync(path.join(root, "install.log"), "w", 0o600);
+  execFileSync(
+    "/usr/local/bin/node",
+    [
+      "/usr/local/lib/node_modules/npm/bin/npm-cli.js",
+      "install",
+      "-g",
+      "--prefix",
+      prefix,
+      "--no-fund",
+      "--no-audit",
+      path.resolve(archive),
+    ],
+    {
+      stdio: ["ignore", installLog, installLog],
+      env: {
+        ...process.env,
+        PATH: "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin",
+        DATA_DIR: data,
+      },
+    }
+  );
+  fs.closeSync(installLog);
+}
+const installedServer = fs.readFileSync(
+  path.join(prefix, "lib/node_modules/omniroute/src/mitm/server.cjs")
 );
-fs.closeSync(installLog);
+const archivedServer = execFileSync("tar", [
+  "-xOf",
+  path.resolve(archive),
+  "package/src/mitm/server.cjs",
+]);
+if (!installedServer.equals(archivedServer))
+  throw Error("Installed smoke prefix does not match the archive");
 const freePort = async () => {
   const s = net.createServer();
   await new Promise((r) => s.listen(0, "127.0.0.1", r));
@@ -94,15 +107,52 @@ try {
   if (!ready) throw Error("Isolated package did not become healthy");
   process.env.DATA_DIR = data;
   const { apiFetch } = await import(pathToFileURL(path.join(pkg, "bin/cli/api.mjs")).href);
+  const localKey = execFileSync(
+    "python3",
+    [
+      "-c",
+      "import sqlite3,sys; c=sqlite3.connect('file:'+sys.argv[1]+'?mode=ro',uri=True); row=c.execute(\"SELECT key FROM api_keys WHERE is_active=1 AND revoked_at IS NULL AND is_banned=0 ORDER BY CASE WHEN scopes LIKE '%manage%' THEN 0 ELSE 1 END LIMIT 1\").fetchone(); print(row[0] if row else '',end='')",
+      path.join(data, "storage.sqlite"),
+    ],
+    { encoding: "utf8" }
+  );
+  if (!localKey) throw Error("An existing local inference key is required for package smoke");
   for (const route of ["/api/settings", "/api/tools/agent-bridge/state", "/api/v1/models"]) {
-    const response = await apiFetch(route, { baseUrl: base, maxAttempts: 1 });
+    const response = await apiFetch(route, { baseUrl: base, apiKey: localKey, retry: false });
     if (response.status !== 200) throw Error(`Isolated ${route}: HTTP ${response.status}`);
+    if (route.endsWith("agent-bridge/state")) {
+      const state = await response.json();
+      if (state.serverState.port !== 8443)
+        throw Error("Packaged Bridge state lost the configured port");
+    }
   }
+  const inference = await apiFetch("/v1/messages", {
+    baseUrl: base,
+    apiKey: localKey,
+    retry: false,
+    timeout: 120000,
+    method: "POST",
+    headers: { "anthropic-version": "2023-06-01" },
+    body: {
+      model: "cc/claude-opus-5-5",
+      max_tokens: 64,
+      stream: false,
+      output_config: { effort: "low" },
+      messages: [{ role: "user", content: "Respond with exactly ISOLATED_BRIDGE_OK" }],
+    },
+  });
+  const inferred = await inference.json();
+  if (
+    inference.status !== 200 ||
+    inferred.type !== "message" ||
+    !inferred.content?.some((c) => c.text?.includes("ISOLATED_BRIDGE_OK"))
+  )
+    throw Error(`Isolated Anthropic inference failed: HTTP ${inference.status}`);
   const cors = await fetch(base + "/api/settings", {
     headers: { Origin: "https://untrusted.invalid" },
     signal: AbortSignal.timeout(5000),
   });
-  if (cors.headers.get("access-control-allow-origin") === "https://untrusted.invalid")
+  if (["*", "https://untrusted.invalid"].includes(cors.headers.get("access-control-allow-origin")))
     throw Error("Untrusted origin was accepted");
   const result = {
     ok: true,
@@ -111,6 +161,7 @@ try {
     managementAuth: true,
     bridgeState: true,
     modelCatalog: true,
+    anthropicInference: true,
     corsFailClosed: true,
     port,
     prefix,
