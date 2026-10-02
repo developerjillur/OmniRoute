@@ -40,7 +40,7 @@ omni-ctl redeploy     # rebuild/redeploy the current source
 omni-ctl build-only   # build and isolated smoke, leave live service alone
 ```
 
-The updater checks a clean source tree and patch applicability before touching the live prefix. Build validation includes core typecheck, measured full-scope TypeScript ratchet, Bridge/security regressions, release build and package policy. The inherited v3.8.51 full-scope TypeScript backlog is documented separately; this is not a zero-error claim.
+The updater first requires the root-owned hostname-scoped ingress helper; a missing or obsolete helper blocks the update before the live service is stopped. It checks a clean source tree and patch applicability before touching the live prefix. Build validation includes core typecheck, measured full-scope TypeScript ratchet, Bridge/security regressions, release build and package policy. The inherited v3.8.51 full-scope TypeScript backlog is documented separately; this is not a zero-error claim.
 
 The archive gate rejects missing native transport/recovery/event-stream files and the POSIX client-socket startup bug. An isolated installed prefix uses a cloned database and random auxiliary ports. Authenticated management/catalog, a real Opus request and CORS isolation must pass before promotion. Live acceptance checks the actual native ingress and backend with certificate validation enabled, not just `/healthz`.
 

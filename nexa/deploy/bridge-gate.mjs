@@ -83,10 +83,29 @@ function tlsProbe(port, ca, hostname) {
   });
 }
 
+export function verifyNativeIngress() {
+  const installed = "/Library/Application Support/OmniRoute-Native-Ingress/native-ingress.mjs";
+  const stat = fs.lstatSync(installed);
+  const source = fs.readFileSync(installed, "utf8");
+  if (
+    !stat.isFile() ||
+    stat.uid !== 0 ||
+    (stat.mode & 0o022) !== 0 ||
+    !source.includes("export function inspectClientHello") ||
+    !source.includes('localRouterHost = "127.0.0.2"') ||
+    !source.includes('if (host === "api.anthropic.com")')
+  )
+    throw new Error(
+      "Install the scoped native ingress helper with install-native-ingress.sh before updating; live service left unchanged"
+    );
+  return { ok: true, nativeIngressScoped: true, rootOwned: true };
+}
+
 export async function verifyLive(dataDir = path.join(os.homedir(), ".omniroute-local")) {
+  const nativeIngress = verifyNativeIngress();
   const dir = path.join(dataDir, "mitm");
   const intent = JSON.parse(fs.readFileSync(path.join(dir, "runtime-intent.json"), "utf8"));
-  if (!intent.enabled) return { ok: true, bridgeEnabled: false };
+  if (!intent.enabled) return { ...nativeIngress, bridgeEnabled: false };
   const ca = fs.readFileSync(path.join(dir, "ca.crt"));
   const backend = await tlsProbe(8443, ca, "api.anthropic.com");
   const ingress = await tlsProbe(443, ca, "api.anthropic.com");
@@ -103,6 +122,7 @@ export async function verifyLive(dataDir = path.join(os.homedir(), ".omniroute-l
     backendTlsVerified: true,
     ingressTlsVerified: true,
     targetAgent: "claude-code",
+    nativeIngressScoped: true,
   };
 }
 
@@ -112,11 +132,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     const result =
       mode === "package"
         ? verifyPackage(process.argv[3])
-        : mode === "live"
-          ? await verifyLive(process.argv[3])
-          : (() => {
-              throw new Error("usage: bridge-gate.mjs package <tgz> | live [dataDir]");
-            })();
+        : mode === "ingress"
+          ? verifyNativeIngress()
+          : mode === "live"
+            ? await verifyLive(process.argv[3])
+            : (() => {
+                throw new Error("usage: bridge-gate.mjs package <tgz> | ingress | live [dataDir]");
+              })();
     console.log(JSON.stringify(result));
   } catch (err) {
     console.error(err.message);
