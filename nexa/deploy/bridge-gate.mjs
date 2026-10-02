@@ -19,7 +19,7 @@ export function inspectServerContract(source) {
   ].every((value) => source.includes(value));
 }
 
-export function verifyPackage(archive) {
+export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
   const members = execFileSync("tar", ["-tzf", archive], {
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
@@ -40,12 +40,27 @@ export function verifyPackage(archive) {
   ]) {
     if (!members.includes(member)) throw new Error(`Archive lacks ${member}`);
   }
+  const lifecycleMember = "package/src/mitm/processLifecycle.ts";
+  const lifecyclePresent = members.includes(lifecycleMember);
+  if (!allowPriorLifecycle) {
+    if (!lifecyclePresent) throw new Error("Archive lacks shared Bridge process ownership");
+    const processState = read(lifecycleMember).toString();
+    const runtimeManager = read("package/dist/src/mitm/manager.runtime.ts").toString();
+    if (
+      !processState.includes("omniroute.mitm.process-lifecycle.v1") ||
+      !runtimeManager.includes("omniroute.mitm.process-lifecycle.v1") ||
+      !source.toString().includes("void handleRequest(req, res).catch")
+    ) {
+      throw new Error("Archive lacks Bridge lifecycle or request failure isolation");
+    }
+  }
   const manifest = members.find((p) => p.endsWith("/server/app-paths-manifest.json"));
   if (!manifest || !read(manifest).toString().includes("traffic-inspector/events/route"))
     throw new Error("Archive lacks the compiled inspector event stream route");
   return {
     ok: true,
     sourceAndDistMatch: true,
+    sharedLifecycle: lifecyclePresent,
     serverSha256: createHash("sha256").update(source).digest("hex"),
   };
 }
@@ -131,7 +146,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     const mode = process.argv[2];
     const result =
       mode === "package"
-        ? verifyPackage(process.argv[3])
+        ? verifyPackage(process.argv[3], {
+            allowPriorLifecycle: process.argv.includes("--allow-prior-lifecycle"),
+          })
         : mode === "ingress"
           ? verifyNativeIngress()
           : mode === "live"
