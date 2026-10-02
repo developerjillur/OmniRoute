@@ -20,6 +20,12 @@ export function inspectServerContract(source) {
   ].every((value) => source.includes(value));
 }
 
+export function inspectCompiledCountRoute(source) {
+  return /countTokens[\s\S]{0,180}clientHeaders:Object\.fromEntries\([^)]*\.headers\.entries\(\)\),signal:/.test(
+    source
+  );
+}
+
 export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
   const members = execFileSync("tar", ["-tzf", archive], {
     encoding: "utf8",
@@ -84,11 +90,13 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
     const countChunks = [...countRoute.matchAll(/R\.c\("(server\/chunks\/[^"\n]+)"\)/g)].map(
       (match) => `package/dist/.build/next/${match[1]}`
     );
-    execFileSync(
-      "python3",
-      [
-        "-c",
-        `
+    // Webpack keeps this handler in route.js; Turbopack places it in referenced chunks.
+    if (!inspectCompiledCountRoute(countRoute)) {
+      execFileSync(
+        "python3",
+        [
+          "-c",
+          `
 import json,re,sys,tarfile
 wanted=set(json.loads(sys.argv[2]))
 pattern=rb'countTokens[\\s\\S]{0,180}clientHeaders:Object\\.fromEntries\\([^)]*\\.headers\\.entries\\(\\)\\),signal:'
@@ -98,11 +106,12 @@ with tarfile.open(sys.argv[1], 'r|gz') as archive:
             sys.exit(0)
 raise SystemExit('Compiled token-count route drops native protocol headers or cancellation')
 `,
-        archive,
-        JSON.stringify(countChunks),
-      ],
-      { stdio: "pipe", maxBuffer: 1024 * 1024 }
-    );
+          archive,
+          JSON.stringify(countChunks),
+        ],
+        { stdio: "pipe", maxBuffer: 1024 * 1024 }
+      );
+    }
     const processState = read(lifecycleMember).toString();
     const runtimeManager = read("package/dist/src/mitm/manager.ts").toString();
     if (

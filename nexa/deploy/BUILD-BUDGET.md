@@ -34,7 +34,10 @@ the watchdog terminates an over-budget process. A 5 GiB production attempt exhau
 A separate 6 GiB retry inherited Node 26 from the shell and also exhausted its
 heap. Managed macOS builds now consistently prefer the installed Node 24
 toolchain, disable unused compilation cache, and limit module parallelism to 8.
-A successful complete production build under this revised profile is still required.
+The revised profile completed the production build at 6530 MiB peak RSS.
+Artifact 7a2186f62 passed packaging and the native Bridge package contract.
+Its isolated server booted and reached Anthropic, but real inference returned
+HTTP 429; production promotion remains blocked on a successful inference gate.
 
 `build-candidate.sh` preserves the existing typecheck, ratchet, Bridge, UI,
 security, artifact, and packaging gates. The updater still requires an isolated

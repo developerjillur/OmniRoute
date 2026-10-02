@@ -3,7 +3,7 @@ set -euo pipefail
 OUTDIR="$1"
 npx --no-install fumadocs-mdx
 npm run typecheck:core
-node --test --test-concurrency=1 nexa/deploy/bootstrap-launchdaemon.test.mjs nexa/deploy/native-ingress.test.mjs nexa/deploy/ensure-free-space.test.mjs nexa/deploy/stop-owned-bridge.test.mjs nexa/deploy/run-bounded-build.test.mjs
+node --test --test-concurrency=1 nexa/deploy/bootstrap-launchdaemon.test.mjs nexa/deploy/native-ingress.test.mjs nexa/deploy/ensure-free-space.test.mjs nexa/deploy/stop-owned-bridge.test.mjs nexa/deploy/run-bounded-build.test.mjs nexa/deploy/bridge-gate.test.mjs
 node scripts/check/check-tsc-ratchet.mjs --ratchet | tee "$OUTDIR/tsc-ratchet.log"
 ! grep -q 'tscErrors=SKIP' "$OUTDIR/tsc-ratchet.log"
 node nexa/deploy/run-bridge-tests.mjs

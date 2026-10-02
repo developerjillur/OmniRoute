@@ -52,8 +52,9 @@ validation gate; compatibility with unknown future releases cannot be guaranteed
   Opus requests reached Anthropic but returned quota errors. Successful native
   extended-context inference remains unverified in this pass.
 
-These source changes have not been promoted to the running package. A successful
-complete bounded build, artifact check, isolated real Claude completion, and
+These source changes have not been promoted to the running package. The complete bounded build and artifact checks passed for candidate 7a2186f62
+at 6530 MiB peak RSS. Its isolated server booted and reached Anthropic, which
+returned HTTP 429. A successful isolated real Claude completion and
 post-promotion native requests remain required. The live package and native app
 bundle were not replaced during this review.
 
@@ -71,3 +72,7 @@ regression evidence. The generic tool limit was not raised to an arbitrary
 10000; native requests preserve their tool list through the scoped compatibility
 path. Recovery evidence is in
 `~/Documents/Codex/2026-10-02/omniroute-stability-2245/source-reconciliation.json`.
+
+Package validation accepts both Webpack inline route handlers and Turbopack
+referenced chunks while requiring the same token-count header/cancellation
+contract. Two regression tests and both the current/candidate artifact checks pass.
