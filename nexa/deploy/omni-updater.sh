@@ -55,6 +55,7 @@ if [ -n "${NEXA_DEPLOY_ARTIFACT:-}" ]; then TGZ="$NEXA_DEPLOY_ARTIFACT"; fi
 if [ -f "$TGZ" ]; then
   node "$TOOLS/bridge-gate.mjs" package "$TGZ" || fail "Existing artifact rejected; live service untouched"
 else
+node "$TOOLS/ensure-free-space.mjs" "$BUILDS" build || fail "Source build storage prerequisite failed; live service untouched"
 [ ! -e "$OUTDIR" ] || fail "Incomplete build destination exists; inspect it before retrying"
 mkdir "$OUTDIR"
 BUILD_TREE="$REPO/.claude/worktrees/bridge-build-$STAMP"
@@ -69,7 +70,7 @@ cd "$BUILD_TREE"
 node nexa/apply.mjs
 if ! (
   npm run typecheck:core &&
-  node --test nexa/deploy/bootstrap-launchdaemon.test.mjs nexa/deploy/native-ingress.test.mjs &&
+  node --test nexa/deploy/bootstrap-launchdaemon.test.mjs nexa/deploy/native-ingress.test.mjs nexa/deploy/ensure-free-space.test.mjs &&
   NODE_OPTIONS=--max-old-space-size=8192 node scripts/check/check-tsc-ratchet.mjs --ratchet | tee "$OUTDIR/tsc-ratchet.log" &&
   ! grep -q 'tscErrors=SKIP' "$OUTDIR/tsc-ratchet.log" &&
   node --import tsx/esm --test tests/unit/agent-bridge-native-transport.test.ts tests/unit/agent-bridge-runtime-state.test.ts tests/unit/agent-bridge-lifecycle.test.ts tests/unit/agent-bridge-client-beta.test.ts tests/unit/traffic-inspector-event-stream.test.ts tests/unit/agent-bridge-selected-dns.test.ts tests/unit/security/audit-remediation.test.ts tests/unit/security/audit-remediation-guards.test.ts tests/unit/provider-validation-ssrf-guard.test.ts tests/unit/combo-diagnostics-trace.test.ts tests/unit/idempotency-fusion-collision.test.ts tests/unit/mitm-server-claude-code-routing.test.ts &&
@@ -92,6 +93,7 @@ fi
 mkdir -p "$OUTDIR"
 node "$TOOLS/bridge-gate.mjs" package "$TGZ" > "$OUTDIR/bridge-package-verification.json"
 SMOKE_ROOT="$BUILDS/smoke-$STAMP"
+node "$TOOLS/ensure-free-space.mjs" "$BUILDS" install || fail "Isolated install storage prerequisite failed; live service untouched"
 node "$TOOLS/smoke-package.mjs" "$TGZ" "$SMOKE_ROOT" > "$OUTDIR/isolated-smoke-$STAMP.json" || fail "Isolated package smoke failed; live service untouched"
 if [ "$MODE" = build-only ]; then status ok "verified package built at $TGZ; live service untouched"; exit 0; fi
 cd "$REPO"
