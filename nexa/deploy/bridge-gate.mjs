@@ -45,10 +45,11 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
   if (!allowPriorLifecycle) {
     if (!lifecyclePresent) throw new Error("Archive lacks shared Bridge process ownership");
     const processState = read(lifecycleMember).toString();
-    const runtimeManager = read("package/dist/src/mitm/manager.runtime.ts").toString();
+    const runtimeManager = read("package/dist/src/mitm/manager.ts").toString();
     if (
       !processState.includes("omniroute.mitm.process-lifecycle.v1") ||
-      !runtimeManager.includes("omniroute.mitm.process-lifecycle.v1") ||
+      !runtimeManager.includes("getBridgeProcessState") ||
+      !read("package/dist/src/mitm/processLifecycle.ts").equals(read(lifecycleMember)) ||
       !source.toString().includes("void handleRequest(req, res).catch")
     ) {
       throw new Error("Archive lacks Bridge lifecycle or request failure isolation");
