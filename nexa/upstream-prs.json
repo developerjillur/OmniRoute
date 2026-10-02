@@ -99,5 +99,9 @@
   "tests/unit/agent-bridge-legacy-claude-thinking.test.ts": {
     "pr": 15323,
     "state": "OPEN"
+  },
+  "open-sse/executors/claudeIdentity.ts": {
+    "pr": 15323,
+    "state": "OPEN"
   }
 }

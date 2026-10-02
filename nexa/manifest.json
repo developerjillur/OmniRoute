@@ -7,14 +7,14 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 79,
-    "patches": 50,
+    "total": 80,
+    "patches": 51,
     "new": 27,
     "tooling": 2,
-    "upstreamCandidates": 8,
+    "upstreamCandidates": 9,
     "nexaSpecific": 19,
     "needsReview": 52,
-    "pendingUpstreamPR": 11,
+    "pendingUpstreamPR": 12,
     "mergedUpstreamPR": 0
   },
   "items": [
@@ -133,6 +133,17 @@
       "layer": "patch",
       "class": "upstream-candidate",
       "target": "open-sse/executors/base.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
+    },
+    {
+      "file": "patches/open-sse__executors__claudeIdentity.ts.patch",
+      "layer": "patch",
+      "class": "upstream-candidate",
+      "target": "open-sse/executors/claudeIdentity.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": {
         "pr": 15323,

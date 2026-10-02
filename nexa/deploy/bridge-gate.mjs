@@ -52,6 +52,12 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
       throw new Error("Archive drops native message-thread beta negotiation");
     if (!read("package/open-sse/executors/base.ts").toString().includes("legacyThinkingModel"))
       throw new Error("Archive injects unsupported adaptive thinking into legacy Claude models");
+    if (
+      !read("package/open-sse/executors/claudeIdentity.ts")
+        .toString()
+        .includes("modelSupportsContext1mBeta(claudeModel)")
+    )
+      throw new Error("Archive forces unsupported legacy Claude long-context beta");
     const processState = read(lifecycleMember).toString();
     const runtimeManager = read("package/dist/src/mitm/manager.ts").toString();
     if (
