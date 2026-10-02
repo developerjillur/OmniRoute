@@ -7,13 +7,13 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 49,
-    "patches": 33,
-    "new": 14,
+    "total": 67,
+    "patches": 43,
+    "new": 22,
     "tooling": 2,
-    "upstreamCandidates": 26,
-    "nexaSpecific": 6,
-    "needsReview": 17,
+    "upstreamCandidates": 2,
+    "nexaSpecific": 18,
+    "needsReview": 47,
     "pendingUpstreamPR": 0,
     "mergedUpstreamPR": 0
   },
@@ -53,7 +53,7 @@
     {
       "file": "patches/bin__cli__api.mjs.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "bin/cli/api.mjs",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -61,7 +61,7 @@
     {
       "file": "patches/bin__cli__commands__doctor.mjs.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "bin/cli/commands/doctor.mjs",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -69,7 +69,7 @@
     {
       "file": "patches/bin__omniroute.mjs.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "bin/omniroute.mjs",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -77,7 +77,7 @@
     {
       "file": "patches/docs__openapi.yaml.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "docs/openapi.yaml",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -85,15 +85,23 @@
     {
       "file": "patches/electron__main.js.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "electron/main.js",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/env-example.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": ".env.example",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },
     {
       "file": "patches/next.config.mjs.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "next.config.mjs",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -101,7 +109,7 @@
     {
       "file": "patches/open-sse__services____tests____antigravity-quota-family.test.ts.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "open-sse/services/__tests__/antigravity-quota-family.test.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -109,7 +117,7 @@
     {
       "file": "patches/open-sse__services__antigravityQuotaFamily.ts.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "open-sse/services/antigravityQuotaFamily.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -117,7 +125,7 @@
     {
       "file": "patches/open-sse__utils__earlyStreamKeepalive.ts.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "open-sse/utils/earlyStreamKeepalive.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -125,7 +133,7 @@
     {
       "file": "patches/public__openapi.yaml.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "public/openapi.yaml",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -133,7 +141,7 @@
     {
       "file": "patches/scripts__build__assembleStandalone.mjs.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "scripts/build/assembleStandalone.mjs",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -141,7 +149,7 @@
     {
       "file": "patches/scripts__build__bootstrap-env.mjs.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "scripts/build/bootstrap-env.mjs",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -149,7 +157,7 @@
     {
       "file": "patches/scripts__dev__run-standalone.mjs.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "scripts/dev/run-standalone.mjs",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -165,8 +173,40 @@
     {
       "file": "patches/src__app__(dashboard)__dashboard__providers__[id]__components__ProviderModalsPanel.tsx.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "src/app/(dashboard)/dashboard/providers/[id]/components/ProviderModalsPanel.tsx",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__app__(dashboard)__dashboard__tools__agent-bridge__components__AgentCard.tsx.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "src/app/(dashboard)/dashboard/tools/agent-bridge/components/AgentCard.tsx",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__app__(dashboard)__dashboard__tools__agent-bridge__components__SetupWizard.tsx.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "src/app/(dashboard)/dashboard/tools/agent-bridge/components/SetupWizard.tsx",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__app__(dashboard)__dashboard__tools__traffic-inspector__hooks__useSessionRecorder.ts.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "src/app/(dashboard)/dashboard/tools/traffic-inspector/hooks/useSessionRecorder.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__app__(dashboard)__dashboard__tools__traffic-inspector__hooks__useTrafficStream.ts.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "src/app/(dashboard)/dashboard/tools/traffic-inspector/hooks/useTrafficStream.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },
@@ -195,6 +235,14 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/src__app__api__tools__agent-bridge__state__route.ts.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "src/app/api/tools/agent-bridge/state/route.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/src__app__api__v1__chat__completions__route.ts.patch",
       "layer": "patch",
       "class": "needs-review",
@@ -205,7 +253,7 @@
     {
       "file": "patches/src__app__api__v1__models__catalog.ts.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "src/app/api/v1/models/catalog.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": {
@@ -222,6 +270,14 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/src__instrumentation-node.ts.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "src/instrumentation-node.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/src__lib__cli-helper__config-generator__hermes-agent.ts.patch",
       "layer": "patch",
       "class": "needs-review",
@@ -232,7 +288,7 @@
     {
       "file": "patches/src__lib__cloudSync.ts.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "src/lib/cloudSync.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -240,7 +296,7 @@
     {
       "file": "patches/src__lib__guardrails__registry.ts.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "src/lib/guardrails/registry.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -254,9 +310,33 @@
       "upstreamPR": null
     },
     {
-      "file": "patches/src__shared__network__safeOutboundFetch.ts.patch",
+      "file": "patches/src__mitm__dns__provision.ts.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "src/mitm/dns/provision.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__mitm__manager.ts.patch",
+      "layer": "patch",
+      "class": "nexa-specific",
+      "target": "src/mitm/manager.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__mitm__server.cjs.patch",
       "layer": "patch",
       "class": "upstream-candidate",
+      "target": "src/mitm/server.cjs",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__shared__network__safeOutboundFetch.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
       "target": "src/shared/network/safeOutboundFetch.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -272,7 +352,7 @@
     {
       "file": "patches/tests__e2e__providers-management.spec.ts.patch",
       "layer": "patch",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "tests/e2e/providers-management.spec.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
@@ -288,7 +368,7 @@
     {
       "file": "new/config/quality/tsc-error-baseline.json",
       "layer": "new",
-      "class": "nexa-specific",
+      "class": "needs-review",
       "target": "config/quality/tsc-error-baseline.json",
       "conflictRisk": "none",
       "upstreamPR": null
@@ -296,7 +376,7 @@
     {
       "file": "new/docker-compose.nexaconnect.yml",
       "layer": "new",
-      "class": "nexa-specific",
+      "class": "needs-review",
       "target": "docker-compose.nexaconnect.yml",
       "conflictRisk": "none",
       "upstreamPR": null
@@ -304,7 +384,7 @@
     {
       "file": "new/scripts/build/startupGuard.mjs",
       "layer": "new",
-      "class": "nexa-specific",
+      "class": "needs-review",
       "target": "scripts/build/startupGuard.mjs",
       "conflictRisk": "none",
       "upstreamPR": null
@@ -312,7 +392,7 @@
     {
       "file": "new/scripts/check/check-tsc-ratchet.mjs",
       "layer": "new",
-      "class": "nexa-specific",
+      "class": "needs-review",
       "target": "scripts/check/check-tsc-ratchet.mjs",
       "conflictRisk": "none",
       "upstreamPR": null
@@ -320,7 +400,7 @@
     {
       "file": "new/scripts/docs/annotate-loopback-only.mjs",
       "layer": "new",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "scripts/docs/annotate-loopback-only.mjs",
       "conflictRisk": "none",
       "upstreamPR": null
@@ -328,7 +408,7 @@
     {
       "file": "new/src/app/(dashboard)/dashboard/tools/page.tsx",
       "layer": "new",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "src/app/(dashboard)/dashboard/tools/page.tsx",
       "conflictRisk": "none",
       "upstreamPR": null
@@ -344,15 +424,23 @@
     {
       "file": "new/src/app/api/logs/route.ts",
       "layer": "new",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "src/app/api/logs/route.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/src/app/api/tools/traffic-inspector/events/route.ts",
+      "layer": "new",
+      "class": "nexa-specific",
+      "target": "src/app/api/tools/traffic-inspector/events/route.ts",
       "conflictRisk": "none",
       "upstreamPR": null
     },
     {
       "file": "new/src/app/api/v1/models/nexaCatalogCache.ts",
       "layer": "new",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "src/app/api/v1/models/nexaCatalogCache.ts",
       "conflictRisk": "none",
       "upstreamPR": {
@@ -369,9 +457,57 @@
       "upstreamPR": null
     },
     {
-      "file": "new/tests/unit/authz/__stub_apiKeys.mjs",
+      "file": "new/src/mitm/bootRecovery.ts",
+      "layer": "new",
+      "class": "nexa-specific",
+      "target": "src/mitm/bootRecovery.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/src/mitm/inspector/eventStream.ts",
+      "layer": "new",
+      "class": "nexa-specific",
+      "target": "src/mitm/inspector/eventStream.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/src/mitm/runtimeState.ts",
+      "layer": "new",
+      "class": "nexa-specific",
+      "target": "src/mitm/runtimeState.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-native-transport.test.ts",
       "layer": "new",
       "class": "upstream-candidate",
+      "target": "tests/unit/agent-bridge-native-transport.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-runtime-state.test.ts",
+      "layer": "new",
+      "class": "nexa-specific",
+      "target": "tests/unit/agent-bridge-runtime-state.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-selected-dns.test.ts",
+      "layer": "new",
+      "class": "nexa-specific",
+      "target": "tests/unit/agent-bridge-selected-dns.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/authz/__stub_apiKeys.mjs",
+      "layer": "new",
+      "class": "needs-review",
       "target": "tests/unit/authz/__stub_apiKeys.mjs",
       "conflictRisk": "none",
       "upstreamPR": null
@@ -387,7 +523,7 @@
     {
       "file": "new/tests/unit/security/audit-remediation-guards.test.ts",
       "layer": "new",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "tests/unit/security/audit-remediation-guards.test.ts",
       "conflictRisk": "none",
       "upstreamPR": null
@@ -395,8 +531,16 @@
     {
       "file": "new/tests/unit/security/audit-remediation.test.ts",
       "layer": "new",
-      "class": "upstream-candidate",
+      "class": "needs-review",
       "target": "tests/unit/security/audit-remediation.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/traffic-inspector-event-stream.test.ts",
+      "layer": "new",
+      "class": "nexa-specific",
+      "target": "tests/unit/traffic-inspector-event-stream.test.ts",
       "conflictRisk": "none",
       "upstreamPR": null
     },

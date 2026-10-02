@@ -1,0 +1,74 @@
+diff --git a/src/mitm/manager.ts b/src/mitm/manager.ts
+index c3acc2491..393680bea 100644
+--- a/src/mitm/manager.ts
++++ b/src/mitm/manager.ts
+@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from "child_process";
+ import path from "path";
+ import fs from "fs";
+ import { resolveMitmDataDir } from "./dataDir.ts";
++import { readBridgeRuntimeStatus, writeBridgeIntent, readBridgeIntent } from "./runtimeState.ts";
+ import {
+   removeDNSEntry,
+   removeDNSEntries,
+@@ -332,6 +333,14 @@ export async function handleExitCleanup(
+     // ignore
+   }
+ 
++  if (
++    process.env.MITM_AUTO_RECOVER === "true" &&
++    readBridgeIntent(path.join(resolveMitmDataDir(), "mitm"))
++  ) {
++    log.info({ signal }, "Preserving enabled Bridge DNS for recovery after the service restarts.");
++    return;
++  }
++
+   const sudoPassword = deps.getCachedPassword();
+   if (!sudoPassword) {
+     _orphanedStateDetected = true;
+@@ -377,6 +386,11 @@ export async function getMitmStatus(agentId?: string): Promise<{
+   dnsConfigured: boolean;
+   certExists: boolean;
+   orphanedStateDetected: boolean;
++  port: number;
++  activeConns: number;
++  interceptedCount: number;
++  totalRequests: number;
++  lastStartedAt: string | null;
+ }> {
+   // Check in-memory process first, then fallback to PID file
+   let running = serverProcess !== null && !serverProcess.killed;
+@@ -433,6 +447,7 @@ export async function getMitmStatus(agentId?: string): Promise<{
+     dnsConfigured,
+     certExists,
+     orphanedStateDetected: _orphanedStateDetected,
++    ...readBridgeRuntimeStatus(certDir, running),
+   };
+ }
+ 
+@@ -597,7 +612,7 @@ async function startMitmInternal(
+     options.port > 0 &&
+     options.port <= 65535
+       ? options.port
+-      : 443;
++      : readBridgeRuntimeStatus(certDir, false).port;
+   // D4 — resolve the inspector ingest token so the spawned proxy can post
+   // captured AgentBridge traffic to the local-only ingest endpoint. The token
+   // is shared with the OmniRoute process: getIngestTokenForBootstrap() returns
+@@ -722,6 +737,8 @@ async function startMitmInternal(
+     throw new Error(interpretMitmStartupError(stderrBuffer, port));
+   }
+ 
++  writeBridgeIntent(certDir, true);
++
+   return {
+     running: true,
+     pid: serverPid,
+@@ -806,6 +823,8 @@ export async function stopMitm(
+     () => removeStopDnsEntries(deps, sudoPassword)
+   );
+ 
++  writeBridgeIntent(path.join(resolveMitmDataDir(), "mitm"), false);
++
+   // 2. Kill server process (in-memory or from PID file)
+   await killMitmServerProcessOnStop();
+ 

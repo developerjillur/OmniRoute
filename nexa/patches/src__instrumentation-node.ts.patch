@@ -1,0 +1,15 @@
+diff --git a/src/instrumentation-node.ts b/src/instrumentation-node.ts
+index 3df891284..a6723c739 100755
+--- a/src/instrumentation-node.ts
++++ b/src/instrumentation-node.ts
+@@ -778,5 +778,10 @@ export async function registerNodejs(): Promise<void> {
+     ]);
+   }
+ 
++  if (process.env.MITM_AUTO_RECOVER === "true") {
++    const { scheduleBridgeRecovery } = await import("@/mitm/bootRecovery");
++    scheduleBridgeRecovery();
++  }
++
+   markServerReady();
+ }

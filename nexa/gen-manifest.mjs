@@ -9,7 +9,14 @@ import { NEXA, listPatches, listNewFiles, patchTarget, baseVersion, git } from "
 
 const legacyPath = path.join(NEXA, ".work", "old-classes.json");
 const legacy = fs.existsSync(legacyPath) ? JSON.parse(fs.readFileSync(legacyPath, "utf8")) : {};
-const classify = (file) => legacy[file]?.class || "needs-review";
+const existingPath = path.join(NEXA, "manifest.json");
+const existing = fs.existsSync(existingPath)
+  ? JSON.parse(fs.readFileSync(existingPath, "utf8"))
+  : {};
+const priorClasses = Object.fromEntries(
+  (existing.items || []).filter((i) => i.target).map((i) => [i.target, i.class])
+);
+const classify = (file) => legacy[file]?.class || priorClasses[file] || "needs-review";
 
 // upstream-PR pipeline map (target file -> {pr, state}); drives the traceable self-cleaning.
 const prPath = path.join(NEXA, "upstream-prs.json");

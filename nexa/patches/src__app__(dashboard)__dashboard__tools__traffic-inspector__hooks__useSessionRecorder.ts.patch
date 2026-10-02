@@ -1,0 +1,72 @@
+diff --git a/src/app/(dashboard)/dashboard/tools/traffic-inspector/hooks/useSessionRecorder.ts b/src/app/(dashboard)/dashboard/tools/traffic-inspector/hooks/useSessionRecorder.ts
+index 4951367f3..fcf75520d 100644
+--- a/src/app/(dashboard)/dashboard/tools/traffic-inspector/hooks/useSessionRecorder.ts
++++ b/src/app/(dashboard)/dashboard/tools/traffic-inspector/hooks/useSessionRecorder.ts
+@@ -3,7 +3,7 @@
+ import { useCallback, useEffect, useRef, useState } from "react";
+ import type { WsEvent } from "@/mitm/inspector/types";
+ 
+-const WS_PATH = "/api/tools/traffic-inspector/ws";
++const STREAM_PATH = "/api/tools/traffic-inspector/events";
+ const SNAPSHOT_FLUSH_MS = 500;
+ const SNAPSHOT_FLUSH_BATCH = 10;
+ 
+@@ -29,7 +29,7 @@ export function useSessionRecorder() {
+   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+   const startTimeRef = useRef<number>(0);
+   const mountedRef = useRef(true);
+-  const recordingWsRef = useRef<WebSocket | null>(null);
++  const recordingWsRef = useRef<EventSource | null>(null);
+   const recordingSessionRef = useRef<SessionInfo | null>(null);
+   const pendingSnapshotsRef = useRef<string[]>([]);
+   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+@@ -126,9 +126,7 @@ export function useSessionRecorder() {
+         }, 1000);
+ 
+         // Open a dedicated WS to capture traffic events during the recording window
+-        const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+-        const wsUrl = `${proto}//${window.location.host}${WS_PATH}`;
+-        const ws = new WebSocket(wsUrl);
++        const ws = new EventSource(STREAM_PATH);
+         recordingWsRef.current = ws;
+ 
+         ws.onmessage = (ev: MessageEvent) => {
+@@ -150,7 +148,7 @@ export function useSessionRecorder() {
+           }
+         };
+ 
+-        ws.onerror = () => ws.close();
++        // EventSource reconnects and retains the recording subscription automatically.
+       } catch {
+         // ignore
+       }
+@@ -185,16 +183,19 @@ export function useSessionRecorder() {
+     setSession(null);
+   }, [session, fetchSessions, stopRecordingWs, flushSnapshots]);
+ 
+-  const deleteSession = useCallback(async (id: string) => {
+-    try {
+-      await fetch(`/api/tools/traffic-inspector/sessions/${encodeURIComponent(id)}`, {
+-        method: "DELETE",
+-      });
+-      await fetchSessions();
+-    } catch {
+-      // ignore
+-    }
+-  }, [fetchSessions]);
++  const deleteSession = useCallback(
++    async (id: string) => {
++      try {
++        await fetch(`/api/tools/traffic-inspector/sessions/${encodeURIComponent(id)}`, {
++          method: "DELETE",
++        });
++        await fetchSessions();
++      } catch {
++        // ignore
++      }
++    },
++    [fetchSessions]
++  );
+ 
+   useEffect(() => {
+     return () => {

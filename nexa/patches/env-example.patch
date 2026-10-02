@@ -1,0 +1,19 @@
+diff --git a/.env.example b/.env.example
+index c2996f0a1..05a913e15 100644
+--- a/.env.example
++++ b/.env.example
+@@ -2797,6 +2797,14 @@ APP_LOG_TO_FILE=true
+ # ── MITM debug proxy (development only) ──
+ # Used by: src/mitm/server.cjs — captures upstream traffic for inspection.
+ # MITM_LOCAL_PORT=443
++# Bind the native Bridge listener to loopback.
++# MITM_LOCAL_HOST=127.0.0.1
++# Explicit owner for the shared api.anthropic.com target: claude-code or kiro.
++# MITM_TARGET_AGENT=claude-code
++# Provision enabled agents/custom hosts without legacy Antigravity defaults.
++# MITM_SELECTED_ONLY=true
++# Recover a previously started listener; requires persisted intent, existing DNS and trusted CA.
++# MITM_AUTO_RECOVER=true
+ # MITM_DISABLE_TLS_VERIFY=0
+ # Idle socket timeout (ms) for proxied connections; sockets idle past this are torn
+ # down to avoid leaking half-open tunnels (src/mitm/socketTimeouts.ts, server.cjs).

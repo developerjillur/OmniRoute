@@ -1,0 +1,74 @@
+diff --git a/src/app/(dashboard)/dashboard/tools/traffic-inspector/hooks/useTrafficStream.ts b/src/app/(dashboard)/dashboard/tools/traffic-inspector/hooks/useTrafficStream.ts
+index 0226667a7..e744a1e7e 100644
+--- a/src/app/(dashboard)/dashboard/tools/traffic-inspector/hooks/useTrafficStream.ts
++++ b/src/app/(dashboard)/dashboard/tools/traffic-inspector/hooks/useTrafficStream.ts
+@@ -5,7 +5,7 @@ import type { InterceptedRequest, ListFilters, WsEvent } from "@/mitm/inspector/
+ import { matchesTrafficFilter } from "@/lib/inspector/matchesTrafficFilter";
+ import type { FiltersState } from "./useTrafficFilters";
+ 
+-const WS_PATH = "/api/tools/traffic-inspector/ws";
++const STREAM_PATH = "/api/tools/traffic-inspector/events";
+ const INITIAL_BACKOFF_MS = 500;
+ const MAX_BACKOFF_MS = 30_000;
+ const BACKOFF_MULTIPLIER = 2;
+@@ -32,7 +32,7 @@ export function useTrafficStream(
+   const [paused, setPaused] = useState(false);
+   const [pendingCount, setPendingCount] = useState(0);
+ 
+-  const wsRef = useRef<WebSocket | null>(null);
++  const wsRef = useRef<EventSource | null>(null);
+   const backoffRef = useRef(INITIAL_BACKOFF_MS);
+   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   const mountedRef = useRef(true);
+@@ -56,13 +56,11 @@ export function useTrafficStream(
+ 
+     const connect = () => {
+       if (!mountedRef.current) return;
+-      if (wsRef.current && wsRef.current.readyState < WebSocket.CLOSING) {
++      if (wsRef.current && wsRef.current.readyState < EventSource.CLOSED) {
+         wsRef.current.close();
+       }
+ 
+-      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+-      const url = `${proto}//${window.location.host}${WS_PATH}`;
+-      const ws = new WebSocket(url);
++      const ws = new EventSource(STREAM_PATH);
+       wsRef.current = ws;
+ 
+       ws.onopen = () => {
+@@ -99,31 +97,23 @@ export function useTrafficStream(
+             setRequests((prev) => [event.data, ...prev].slice(0, 1000));
+           }
+         } else if (event.type === "update") {
+-          setRequests((prev) =>
+-            prev.map((r) => (r.id === event.data.id ? event.data : r))
+-          );
++          setRequests((prev) => prev.map((r) => (r.id === event.data.id ? event.data : r)));
+         } else if (event.type === "clear") {
+           setRequests([]);
+         }
+       };
+ 
+-      ws.onclose = () => {
++      ws.onerror = () => {
++        ws.close();
+         if (!mountedRef.current) return;
+         setConnected(false);
+         const delay = Math.min(backoffRef.current, MAX_BACKOFF_MS);
+-        backoffRef.current = Math.min(
+-          backoffRef.current * BACKOFF_MULTIPLIER,
+-          MAX_BACKOFF_MS
+-        );
++        backoffRef.current = Math.min(backoffRef.current * BACKOFF_MULTIPLIER, MAX_BACKOFF_MS);
+         reconnectTimerRef.current = setTimeout(() => {
+           // Use ref so we always call the current connect version
+           connectRef.current();
+         }, delay);
+       };
+-
+-      ws.onerror = () => {
+-        ws.close();
+-      };
+     };
+ 
+     // Store in ref for reconnect callback

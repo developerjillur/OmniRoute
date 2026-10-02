@@ -1,0 +1,15 @@
+diff --git a/src/mitm/dns/provision.ts b/src/mitm/dns/provision.ts
+index 5e8577f4d..6e568ff81 100644
+--- a/src/mitm/dns/provision.ts
++++ b/src/mitm/dns/provision.ts
+@@ -139,7 +139,9 @@ export async function provisionDnsEntries(
+     logger,
+   };
+ 
+-  await provisionDefaultDns(sudoPassword, resolvedDeps);
++  if (process.env.MITM_SELECTED_ONLY !== "true") {
++    await provisionDefaultDns(sudoPassword, resolvedDeps);
++  }
+   await provisionAgentDns(sudoPassword, resolvedDeps);
+   await provisionCustomHostsDns(sudoPassword, resolvedDeps);
+ }
