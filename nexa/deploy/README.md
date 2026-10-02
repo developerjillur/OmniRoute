@@ -50,6 +50,8 @@ No updater path deletes old archives, snapshots, rejected runtimes or build evid
 
 ## Useful verification
 
+The versioned final Bengali report is `../docs/AGENT-BRIDGE-PRODUCTION-HANDOFF-2026-10-02.md`; the credential-free frozen acceptance record and repeatable native concurrency harness are in `../qa/`. The record names the tested production code SHA. A later documentation/tooling commit does not mean the deployed executable has changed; inspect `dist/BUILD_SHA` and the verified archive before reporting a new deployment.
+
 ```sh
 node "$HOME/Developer/OmniRoute/nexa/deploy/bridge-gate.mjs" live
 node "$HOME/Developer/OmniRoute/nexa/deploy/bridge-gate.mjs" package /absolute/path/to/omniroute-version.tgz

@@ -1,0 +1,167 @@
+{
+  "owner": "Jillur Rahman",
+  "date": "2026-10-02",
+  "timezone": "Asia/Dhaka",
+  "acceptance": "verified-native-code-transport-with-provider-availability-exception",
+  "runtime": {
+    "version": "3.8.51",
+    "buildSha": "f002e7654",
+    "node": "24.15.0",
+    "claudeCli": "2.1.287",
+    "artifactSha256": "5c5b4b1cd5999ac797a7a0c192daf3136f450c5b159835a73cc41e85a1feebb0",
+    "serverSha256": "c77f5535a65f45e0e5a75b8cc010fa1bde4cff750ba9c4049b38e8909d8af8db"
+  },
+  "overlay": {
+    "pristineBase": "c1e30b767",
+    "patches": 53,
+    "copiedNewFiles": 28,
+    "changesRestrictedTo": "nexa/",
+    "runtimeOnlyFixesRemaining": false
+  },
+  "tests": {
+    "bridgeNode": {
+      "passed": 528,
+      "total": 528
+    },
+    "bridgeUi": {
+      "passed": 21,
+      "total": 21
+    },
+    "upstreamTargeted": {
+      "passed": 89,
+      "total": 89
+    },
+    "coreTypecheck": "pass",
+    "typescriptRatchet": {
+      "measured": 5830,
+      "baseline": 5830,
+      "repositoryErrorFree": false
+    },
+    "nativeCliModels": {
+      "passed": 12,
+      "total": 13,
+      "blocked": ["claude-sonnet-4-5-20250929"]
+    },
+    "nativeModelsEffortsCount": {
+      "passed": 23,
+      "total": 24,
+      "blocked": ["claude-sonnet-4-5-20250929"]
+    },
+    "nativeProtocolCount": {
+      "ok": true,
+      "results": [
+        {
+          "name": "advisor-count",
+          "status": 200,
+          "source": "provider",
+          "input_tokens": 452,
+          "ok": true
+        },
+        {
+          "name": "inline-count",
+          "status": 200,
+          "source": "provider",
+          "input_tokens": 564,
+          "ok": true
+        }
+      ]
+    },
+    "nativeCliAgentTools": {
+      "ok": true,
+      "agentToolCalls": 2,
+      "correctSyntheticResults": true,
+      "noUserProjectFilesRequested": true
+    },
+    "nativeDesktopAgents": {
+      "ok": true,
+      "actualAgentCalls": 2,
+      "receivedMessages": 2,
+      "correctResults": [99, 89],
+      "marker": "NATIVE_GUI_AGENTS_VERIFIED",
+      "model": "Opus 5.5",
+      "effort": "Extra",
+      "noUserProjectFilesRequested": true
+    },
+    "finalConcurrencyHarness": {
+      "passed": 12,
+      "total": 12,
+      "fourParallelSessions": true,
+      "privateContextIsolation": true,
+      "cancellationIsolation": true,
+      "listenerPidPreserved": true
+    },
+    "lifecycle": {
+      "stopStartCycles": 3,
+      "duplicateStartsRejected": 5,
+      "defaultVendorTlsFallback": true,
+      "explicitStopIntentPreserved": true
+    },
+    "archiveRecheck": {
+      "ok": true,
+      "sourceAndDistMatch": true,
+      "sharedLifecycle": true,
+      "serverSha256": "c77f5535a65f45e0e5a75b8cc010fa1bde4cff750ba9c4049b38e8909d8af8db"
+    },
+    "liveTlsRecheck": {
+      "ok": true,
+      "bridgeEnabled": true,
+      "backendTlsVerified": true,
+      "ingressTlsVerified": true,
+      "targetAgent": "claude-code",
+      "nativeIngressScoped": true
+    }
+  },
+  "preservation": {
+    "loggedIn": true,
+    "authMethod": "claude.ai",
+    "apiProvider": "firstParty",
+    "subscriptionType": "max",
+    "nativeSignatureValid": true,
+    "nativeCliVersion": "2.1.287 (Claude Code)",
+    "ingressSourceMatchesInstalled": true,
+    "ingressRootOwned": true,
+    "ingressRunning": true,
+    "ingressEnabled": true,
+    "noPersistentApiOverrides": true,
+    "ok": true
+  },
+  "configuration": {
+    "ok": true,
+    "fileFingerprintsPreserved": {
+      ".env": true,
+      "bridge-upstream-dns.cjs": true,
+      "mitm/ca.crt": true,
+      "mitm/ca.key": true
+    },
+    "mappingsPreserved": true,
+    "targetsPreserved": true,
+    "mappingCount": 13,
+    "databaseIntegrity": "ok",
+    "server": {
+      "running": true,
+      "port": 8443,
+      "certTrusted": true
+    }
+  },
+  "managedUpdate": {
+    "state": "ok",
+    "mode": "update",
+    "message": "already running the newest verified build",
+    "at": "2026-10-02T09:26:28.174Z"
+  },
+  "backupStamp": "20261002-150336",
+  "knownLimits": [
+    "Sonnet 4.5 normal pool request blocked: one connection upstream active-critical weekly limit, other connection exact-model 404",
+    "Final continuity requests selected one eligible provider connection; final two-account rotation not established",
+    "Two active OAuth connections; third owner login pending",
+    "All Desktop Chat/Cowork, scheduled/cloud Routine execution and new full Mac reboot not accepted",
+    "Future vendor protocols and statistical output-quality parity are not guaranteed"
+  ],
+  "upstream": {
+    "url": "https://github.com/diegosouzapw/OmniRoute/pull/15323",
+    "head": "ef90346e2",
+    "draft": true,
+    "fullCiPassed": false
+  },
+  "privacy": "No provider credentials, account identifiers or raw prompt/session logs in this record."
+}
