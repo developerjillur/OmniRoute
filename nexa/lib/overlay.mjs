@@ -13,6 +13,7 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -94,23 +95,54 @@ export function assertPristine() {
 
 // ---- patch health ----------------------------------------------------------
 
-// Would every patch apply onto the current base? Uses --3way so minor upstream drift
-// around a hunk auto-resolves; only a genuine overlap fails.
+// Would every patch apply onto the current base WITHOUT conflicts?
+// `git apply --check --3way` cannot answer that: it reports success for a patch whose 3-way
+// merge would leave conflict markers (the v3.8.48 -> v3.8.51 update hid 16 broken patches that
+// way). So: a strict `--check` first (fast, exact); only when that fails, run the real 3-way apply
+// in a throwaway worktree of the pristine base, where a conflict makes git exit non-zero.
 export function checkPatches() {
   const failed = [];
-  for (const p of listPatches()) {
-    const rel = path.basename(p);
-    try {
-      execFileSync("git", ["apply", "--check", "--3way", p], { cwd: REPO, stdio: "pipe" });
-    } catch (e) {
-      failed.push({
-        patch: rel,
-        target: patchTarget(p),
-        reason: (e.stderr?.toString() || e.message).trim(),
-      });
+  const patches = listPatches();
+  let scratch = null;
+  try {
+    for (const p of patches) {
+      const rel = path.basename(p);
+      try {
+        execFileSync("git", ["apply", "--check", p], { cwd: REPO, stdio: "pipe" });
+        continue;
+      } catch {
+        // fall through to the real 3-way attempt
+      }
+      if (!scratch) {
+        scratch = fs.mkdtempSync(path.join(os.tmpdir(), "nexa-patchcheck-"));
+        fs.rmdirSync(scratch);
+        execFileSync("git", ["worktree", "add", "--detach", "--quiet", scratch, "upstream-main"], {
+          cwd: REPO,
+          stdio: "pipe",
+        });
+      }
+      try {
+        execFileSync("git", ["apply", "--3way", "--whitespace=nowarn", p], {
+          cwd: scratch,
+          stdio: "pipe",
+        });
+      } catch (e) {
+        failed.push({
+          patch: rel,
+          target: patchTarget(p),
+          reason: (e.stderr?.toString() || e.message).trim(),
+        });
+      } finally {
+        // undo this patch (including any conflict state) before trying the next one
+        execFileSync("git", ["reset", "--quiet", "--hard"], { cwd: scratch, stdio: "pipe" });
+      }
+    }
+  } finally {
+    if (scratch) {
+      execFileSync("git", ["worktree", "remove", "--force", scratch], { cwd: REPO, stdio: "pipe" });
     }
   }
-  return { total: listPatches().length, failed };
+  return { total: patches.length, failed };
 }
 
 // ---- apply / restore -------------------------------------------------------
