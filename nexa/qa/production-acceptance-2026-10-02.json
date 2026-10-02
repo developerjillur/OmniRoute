@@ -163,5 +163,12 @@
     "draft": true,
     "fullCiPassed": false
   },
-  "privacy": "No provider credentials, account identifiers or raw prompt/session logs in this record."
+  "privacy": "No provider credentials, account identifiers or raw prompt/session logs in this record.",
+  "supportFiles": {
+    "upstreamDnsShimSource": "nexa/deploy/bridge-upstream-dns.cjs",
+    "installedSourceMatches": true,
+    "sha256": "ec78ef98c2acc460dc00dabfb2f89fa00564bbf6c1559054db650ed3cb2e13ef",
+    "publicEnvironmentReference": "nexa/config/agent-bridge.env.example",
+    "secretEnvOrCredentialsCommitted": false
+  }
 }

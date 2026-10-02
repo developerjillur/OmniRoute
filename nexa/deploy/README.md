@@ -52,6 +52,8 @@ No updater path deletes old archives, snapshots, rejected runtimes or build evid
 
 The versioned final Bengali report is `../docs/AGENT-BRIDGE-PRODUCTION-HANDOFF-2026-10-02.md`; the credential-free frozen acceptance record and repeatable native concurrency harness are in `../qa/`. The record names the tested production code SHA. A later documentation/tooling commit does not mean the deployed executable has changed; inspect `dist/BUILD_SHA` and the verified archive before reporting a new deployment.
 
+`bridge-upstream-dns.cjs` is the versioned source of the existing DATA_DIR shim loaded through `NODE_OPTIONS`; it keeps provider requests on public DNS while native clients use the local hosts route. Its bytes match the installed shim. The updater preserves the existing DATA_DIR file and secret environment. `../config/agent-bridge.env.example` records only public settings and an example absolute path; never overwrite the secret `.env` with this example. Recover a missing shim from this source with a backup and verify package/live TLS before acceptance.
+
 ```sh
 node "$HOME/Developer/OmniRoute/nexa/deploy/bridge-gate.mjs" live
 node "$HOME/Developer/OmniRoute/nexa/deploy/bridge-gate.mjs" package /absolute/path/to/omniroute-version.tgz
