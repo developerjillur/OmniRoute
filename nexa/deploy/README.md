@@ -11,7 +11,7 @@ This directory is the versioned deployment source for the local production servi
 - Persistent database, environment and CA: `~/.omniroute-local`.
 - Archives, isolated package smoke and retained runtime prefixes: `~/.omniroute-builds`.
 - Service: user LaunchAgent `com.nexalance.omniroute`, HTTP `127.0.0.1:28128`.
-- Native ingress: system LaunchDaemon `com.nexalance.omniroute-native-ingress`, TCP `127.0.0.1:443` and `[::1]:443`, dropping to nobody after binding.
+- Native ingress: system LaunchDaemon `com.nexalance.omniroute-native-ingress`, TCP `127.0.0.1:443` and `[::1]:443`. `omni-bind.pl` creates the sockets as the non-root Local application user, binds as root, and runs the forwarder as nobody. This preserves macOS wildcard nginx coexistence in either startup order.
 - Decrypting Bridge: `127.0.0.1:8443`, existing trusted CA and selected Claude host.
 
 Install the versioned local command with `bash "$HOME/Developer/OmniRoute/nexa/deploy/install-local-command.sh"`. This preserves the previous HOME command or symlink and leaves the portable T7 script intact. Stock npm replacement and reinstall over an existing prefix are rejected by this entry point.
@@ -62,3 +62,11 @@ python3 "$HOME/Developer/OmniRoute/nexa/tests/test_database_rollback.py"
 ```
 
 The local gate requires the configured 443/8443 layout. New vendor endpoints, model IDs or native protocols need compatibility verification. Cloud execution features and identical output quality are outside this transport acceptance claim. Further full Mac reboot acceptance remains distinct from the tested service restart recovery.
+
+## Local router coexistence and cached client DNS
+
+The installer now retains the user-owned inherited-socket design introduced by the portable Local repair. It installs its own root-owned `omni-bind.pl` beside the ingress, so a later ingress reinstall cannot revert to root-owned sockets that block Local nginx. Its default owner is `SUDO_USER`; pass the Local application's non-root username as the first argument when installing from a root shell. It refreshes macOS DNS after loading the daemon. Installation remains an administrator operation and can interrupt active connections.
+
+The enabled-Bridge live gate also checks the normal operating-system lookup for `api.anthropic.com`. Every returned address must be `127.0.0.1` or `::1`; an explicit loopback TLS probe alone is insufficient. The earlier acceptance record describes the old gate and is retained as historical evidence. If hosts entries exist but public addresses are returned, refresh the cache in Terminal with `sudo /usr/bin/killall -HUP mDNSResponder`, then verify the live gate. Reopen existing native sessions after a routing transition to discard retained public connections. A successful CLI response alone does not prove interception: confirm the corresponding model request in Bridge logs.
+
+The October 2 evening investigation reproduced native quota rejection with no corresponding intercepted model request, while forced loopback transport health passed. The system lookup still returned a public address. The nine targeted DNS, inherited-descriptor, TLS byte-preservation and Local coexistence regressions pass. End-to-end acceptance remains pending until administrator cache refresh and a native Desktop response are verified. The installed Local helper was preserved; the revised versioned installer has not been applied to the root-owned live files in this investigation.

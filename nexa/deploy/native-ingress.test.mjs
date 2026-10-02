@@ -1,7 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import net from "node:net";
-import { createIngress, startIngress, inspectClientHello } from "./native-ingress.mjs";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import {
+  createIngress,
+  startIngress,
+  inspectClientHello,
+  inheritedSocketFds,
+} from "./native-ingress.mjs";
 const word = (n) => {
   const b = Buffer.alloc(2);
   b.writeUInt16BE(n);
@@ -43,6 +50,50 @@ const exchange = (port, payload, fragmented = false) =>
     c.on("end", () => resolve(Buffer.concat(bytes)));
     c.on("error", reject);
   });
+test("inherited sockets accept only unique loopback HTTPS descriptors", () => {
+  assert.deepEqual(inheritedSocketFds("3@127.0.0.1:443,4@[::1]:443"), [3, 4]);
+  assert.deepEqual(inheritedSocketFds(undefined), []);
+  for (const invalid of [
+    "3@0.0.0.0:443",
+    "2@127.0.0.1:443",
+    "3@127.0.0.1:80",
+    "3@127.0.0.1:443,3@[::1]:443",
+    "NaN@127.0.0.1:443",
+  ])
+    assert.throws(() => inheritedSocketFds(invalid));
+});
+test("inherited listener forwards actual connections after its parent closes the descriptor", async (t) => {
+  const echo = net.createServer((c) => c.pipe(c));
+  const target = await listen(echo);
+  t.after(() => close(echo));
+  const inherited = net.createServer();
+  const port = await listen(inherited);
+  const ingressModuleUrl = new URL("./native-ingress.mjs", import.meta.url).href;
+  const child = spawn(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `import {startIngress} from ${JSON.stringify(ingressModuleUrl)}; await startIngress({fds:[3],backendPort:${target}}); console.log('ready');`,
+    ],
+    { stdio: ["ignore", "pipe", "pipe", inherited._handle.fd] }
+  );
+  const exited = once(child, "exit");
+  t.after(async () => {
+    child.kill();
+    await exited;
+  });
+  const ready = await Promise.race([
+    once(child.stdout, "data"),
+    exited.then(() => {
+      throw Error("Inherited listener exited before readiness");
+    }),
+  ]);
+  assert.equal(ready[0].toString().trim(), "ready");
+  await close(inherited);
+  const packet = clientHello("api.anthropic.com");
+  assert.deepEqual(await exchange(port, packet), packet);
+});
 test("encrypted stream is unchanged and unavailable local backend falls back to vendor route", async (t) => {
   const echo = net.createServer((c) => c.pipe(c));
   const target = await listen(echo);

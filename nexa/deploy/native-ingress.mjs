@@ -145,14 +145,33 @@ export function createIngress({
   });
 }
 
-export async function startIngress({ port = 443, backendPort = 8443 } = {}) {
+export function inheritedSocketFds(value) {
+  if (!value) return [];
+  const sockets = value.split(",");
+  const seen = new Set();
+  return sockets.map((socket) => {
+    const match = /^(\d+)@(127\.0\.0\.1:443|\[::1\]:443)$/.exec(socket);
+    const fd = match ? Number(match[1]) : NaN;
+    if (!Number.isSafeInteger(fd) || fd < 3 || seen.has(fd))
+      throw new Error("Invalid inherited loopback HTTPS socket");
+    seen.add(fd);
+    return fd;
+  });
+}
+
+export async function startIngress({ port = 443, backendPort = 8443, fds = [] } = {}) {
   const servers = [];
   try {
-    for (const host of ["127.0.0.1", "::1"]) {
+    for (const endpoint of fds.length ? fds : ["127.0.0.1", "::1"]) {
       const server = createIngress({ backendPort });
       await new Promise((resolve, reject) => {
         server.once("error", reject);
-        server.listen({ host, port, ipv6Only: host === "::1" }, resolve);
+        server.listen(
+          typeof endpoint === "number"
+            ? { fd: endpoint }
+            : { host: endpoint, port, ipv6Only: endpoint === "::1" },
+          resolve
+        );
       });
       servers.push(server);
     }
@@ -164,7 +183,8 @@ export async function startIngress({ port = 443, backendPort = 8443 } = {}) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  const listeners = await startIngress();
+  // User-owned inherited sockets coexist with Local's wildcard nginx listeners.
+  const listeners = await startIngress({ fds: inheritedSocketFds(process.env.OMNI_LISTEN_FDS) });
   if (process.getuid?.() === 0) {
     process.setgid("nobody");
     process.setuid("nobody");

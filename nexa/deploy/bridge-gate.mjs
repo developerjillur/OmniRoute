@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import https from "node:https";
+import { lookup } from "node:dns/promises";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
@@ -173,13 +174,63 @@ export function verifyNativeIngress() {
     stat.uid !== 0 ||
     (stat.mode & 0o022) !== 0 ||
     !source.includes("export function inspectClientHello") ||
+    !source.includes("OMNI_LISTEN_FDS") ||
     !source.includes('localRouterHost = "127.0.0.2"') ||
     !source.includes('if (host === "api.anthropic.com")')
   )
     throw new Error(
       "Install the scoped native ingress helper with install-native-ingress.sh before updating; live service left unchanged"
     );
+  const plist = "/Library/LaunchDaemons/com.nexalance.omniroute-native-ingress.plist";
+  const args = JSON.parse(
+    execFileSync("/usr/bin/plutil", ["-convert", "json", "-o", "-", plist], { encoding: "utf8" })
+  ).ProgramArguments;
+  if (
+    !Array.isArray(args) ||
+    args.length !== 7 ||
+    args[0] !== "/usr/bin/perl" ||
+    !path.isAbsolute(args[1]) ||
+    path.basename(args[1]) !== "omni-bind.pl" ||
+    args[3] !== "127.0.0.1:443,[::1]:443" ||
+    args[4] !== "--" ||
+    args[5] !== "/usr/local/bin/node" ||
+    args[6] !== installed ||
+    !/^[A-Za-z_][A-Za-z0-9_.-]*$/.test(args[2])
+  )
+    throw new Error(
+      "Native ingress must use Local-user-owned inherited sockets before updating; live service left unchanged"
+    );
+  const binder = fs.lstatSync(args[1]);
+  const daemon = fs.lstatSync(plist);
+  if (
+    !binder.isFile() ||
+    binder.uid !== 0 ||
+    (binder.mode & 0o022) !== 0 ||
+    !daemon.isFile() ||
+    daemon.uid !== 0 ||
+    (daemon.mode & 0o022) !== 0 ||
+    Number(execFileSync("/usr/bin/id", ["-u", args[2]], { encoding: "utf8" }).trim()) === 0
+  )
+    throw new Error("Unsafe native ingress socket ownership or daemon permissions");
   return { ok: true, nativeIngressScoped: true, rootOwned: true };
+}
+
+export async function verifyClientDns(resolve = lookup) {
+  const addresses = await resolve("api.anthropic.com", { all: true });
+  if (!addresses.length || addresses.some(({ address }) => !["127.0.0.1", "::1"].includes(address)))
+    throw new Error(
+      "Native client DNS bypasses Agent Bridge despite hosts entries; refresh macOS DNS cache and reopen existing native sessions before retrying"
+    );
+  return { clientDnsVerified: true };
+}
+
+export async function verifyClientRouting(dataDir = path.join(os.homedir(), ".omniroute-local")) {
+  const intent = JSON.parse(
+    fs.readFileSync(path.join(dataDir, "mitm/runtime-intent.json"), "utf8")
+  );
+  return intent.enabled
+    ? { ok: true, ...(await verifyClientDns()) }
+    : { ok: true, bridgeEnabled: false };
 }
 
 export async function verifyLive(dataDir = path.join(os.homedir(), ".omniroute-local")) {
@@ -187,6 +238,7 @@ export async function verifyLive(dataDir = path.join(os.homedir(), ".omniroute-l
   const dir = path.join(dataDir, "mitm");
   const intent = JSON.parse(fs.readFileSync(path.join(dir, "runtime-intent.json"), "utf8"));
   if (!intent.enabled) return { ...nativeIngress, bridgeEnabled: false };
+  const clientDns = await verifyClientDns();
   const ca = fs.readFileSync(path.join(dir, "ca.crt"));
   const backend = await tlsProbe(8443, ca, "api.anthropic.com");
   const ingress = await tlsProbe(443, ca, "api.anthropic.com");
@@ -204,6 +256,7 @@ export async function verifyLive(dataDir = path.join(os.homedir(), ".omniroute-l
     ingressTlsVerified: true,
     targetAgent: "claude-code",
     nativeIngressScoped: true,
+    ...clientDns,
   };
 }
 
@@ -217,11 +270,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
           })
         : mode === "ingress"
           ? verifyNativeIngress()
-          : mode === "live"
-            ? await verifyLive(process.argv[3])
-            : (() => {
-                throw new Error("usage: bridge-gate.mjs package <tgz> | ingress | live [dataDir]");
-              })();
+          : mode === "routing"
+            ? await verifyClientRouting(process.argv[3])
+            : mode === "live"
+              ? await verifyLive(process.argv[3])
+              : (() => {
+                  throw new Error(
+                    "usage: bridge-gate.mjs package <tgz> | ingress | routing [dataDir] | live [dataDir]"
+                  );
+                })();
     console.log(JSON.stringify(result));
   } catch (err) {
     console.error(err.message);

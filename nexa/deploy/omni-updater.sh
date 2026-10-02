@@ -35,6 +35,7 @@ cd "$REPO"
 [ "$(git branch --show-current)" = nexalance ] || fail "Source is not on nexalance"
 [ -z "$(git status --porcelain)" ] || fail "Source tree has uncommitted changes; live service untouched"
 node "$TOOLS/bridge-gate.mjs" ingress || fail "Native ingress prerequisite needs the administrator installer; live service untouched"
+node "$TOOLS/bridge-gate.mjs" routing "$DATA_DIR" || fail "Native client DNS needs refresh; live service untouched"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 if [ "$MODE" = update ]; then
   status running "checking the newest stable upstream release"
