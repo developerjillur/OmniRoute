@@ -59,9 +59,15 @@ bundle were not replaced during this review.
 
 ## Separate unfinished source work
 
-The main checkout contains another session's uncommitted changes to
-`modelFamilyFallback.ts`, `toolLimitDetector.ts`, its fallback test, and a new
-text-fidelity test. The useful intent was reviewed and incorporated into this
-overlay where supported by regression evidence. The uncommitted originals were
-left intact. The generic tool limit was not raised to an arbitrary 10000;
-native requests preserve their tool list through the scoped compatibility path.
+The other session ended with an API error and had no pending tool calls. After
+reviewing its inactive log and unchanged files, its three tracked edits were
+saved as a re-applicable patch and its original new test was moved to the local
+review evidence folder. Hashes and patch applicability were verified before
+restoring only those reviewed paths to pristine source. The main checkout is
+clean again and no original work was lost.
+
+The useful intent was incorporated into this overlay where supported by
+regression evidence. The generic tool limit was not raised to an arbitrary
+10000; native requests preserve their tool list through the scoped compatibility
+path. Recovery evidence is in
+`~/Documents/Codex/2026-10-02/omniroute-stability-2245/source-reconciliation.json`.
