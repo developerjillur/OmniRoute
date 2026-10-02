@@ -6,10 +6,10 @@ import sys, sqlite3, shutil, json
 home = Path.home()
 target = Path(sys.argv[1]).resolve()
 target.mkdir(mode=0o700, parents=True, exist_ok=False)
-sources = [home/'.omniroute-local/.env', home/'.omniroute-local/bridge-upstream-dns.cjs', home/'Library/LaunchAgents/com.nexalance.omniroute.plist', home/'Library/Application Support/Local/run/router/nginx/conf/route.api-anthropic-bridge.conf', Path('/etc/hosts')]
+sources = [home/'.omniroute-local/.env', home/'.omniroute-local/bridge-upstream-dns.cjs', home/'Library/LaunchAgents/com.nexalance.omniroute.plist', home/'Library/Application Support/Local/run/router/nginx/conf/route.api-anthropic-bridge.conf', Path('/etc/hosts'), Path('/Library/LaunchDaemons/com.nexalance.omniroute-native-ingress.plist'), Path('/Library/Application Support/OmniRoute-Native-Ingress/native-ingress.mjs'), home/'.local/bin/omni-ctl', home/'.omniroute-runtime/updater/omni-updater.sh']
 for source in sources:
     if source.is_file():
-        relative = source.relative_to(home) if source.is_relative_to(home) else Path('system/hosts')
+        relative = source.relative_to(home) if source.is_relative_to(home) else Path('system')/source.relative_to('/')
         dest = target/relative
         dest.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         shutil.copyfile(source, dest)

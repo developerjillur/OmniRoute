@@ -18,13 +18,19 @@ say() { echo "[$(date '+%F %T')] $*"; }
 status() { /usr/local/bin/node -e 'const fs=require("fs");fs.writeFileSync(process.argv[1],JSON.stringify({state:process.argv[2],mode:process.argv[3],message:process.argv[4],at:new Date().toISOString()}));' "$STATUS" "$1" "$MODE" "$2"; say "$1: $2"; }
 fail() { status failed "$1"; exit 1; }
 healthy() { [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://127.0.0.1:28128/healthz)" = 200 ]; }
-wait_ready() { local elapsed=0; while [ "$elapsed" -lt 180 ]; do if healthy && node "$TOOLS/bridge-gate.mjs" live "$DATA_DIR"; then return 0; fi; sleep 2; elapsed=$((elapsed+2)); done; return 1; }
-stop_svc() { launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true; }
+wait_ready() { local elapsed=0; while [ "$elapsed" -lt "${NEXA_READY_TIMEOUT_SECONDS:-180}" ]; do if healthy && node "$TOOLS/bridge-gate.mjs" live "$DATA_DIR"; then return 0; fi; sleep 2; elapsed=$((elapsed+2)); done; return 1; }
+stop_svc() { launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true; local waited=0; while launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; do [ "$waited" -lt 60 ] || return 1; sleep 1; waited=$((waited+1)); done; }
 start_svc() { launchctl bootstrap "$DOMAIN" "$PLIST"; }
 case "$MODE" in update|redeploy|build-only) ;; *) echo "usage: $0 update|redeploy|build-only"; exit 2 ;; esac
 mkdir -p "$BUILDS"
-mkdir "$BUILDS/.lock" 2>/dev/null || { say "another update is running"; exit 0; }
-trap 'rmdir "$BUILDS/.lock" 2>/dev/null || true' EXIT
+if ! mkdir "$BUILDS/.lock" 2>/dev/null; then
+  HOLDER="$(cat "$BUILDS/.lock/pid" 2>/dev/null || true)"
+  if [[ "$HOLDER" =~ ^[0-9]+$ ]] && ps -p "$HOLDER" -o command= | grep -q 'omni-updater.sh'; then say "another update is running"; exit 0; fi
+  mv "$BUILDS/.lock" "$BUILDS/lock-stale-$(date +%Y%m%d-%H%M%S)"
+  mkdir "$BUILDS/.lock"
+fi
+printf '%s\n' "$$" > "$BUILDS/.lock/pid"
+trap 'rm -f "$BUILDS/.lock/pid"; rmdir "$BUILDS/.lock" 2>/dev/null || true' EXIT
 cd "$REPO"
 [ "$(git branch --show-current)" = nexalance ] || fail "Source is not on nexalance"
 [ -z "$(git status --porcelain)" ] || fail "Source tree has uncommitted changes; live service untouched"
@@ -40,25 +46,46 @@ fi
 SHA="$(git rev-parse --short HEAD)"
 VER="$(node -p 'require("./package.json").version')"
 OUTDIR="$BUILDS/$VER-$SHA"
-[ ! -e "$OUTDIR" ] || fail "Build destination already exists; preserving it for review"
+TGZ="$OUTDIR/omniroute-$VER.tgz"
+if [ -n "${NEXA_DEPLOY_ARTIFACT:-}" ]; then TGZ="$NEXA_DEPLOY_ARTIFACT"; fi
+if [ -f "$TGZ" ]; then
+  node "$TOOLS/bridge-gate.mjs" package "$TGZ" || fail "Existing artifact rejected; live service untouched"
+else
+[ ! -e "$OUTDIR" ] || fail "Incomplete build destination exists; inspect it before retrying"
 mkdir "$OUTDIR"
 BUILD_TREE="$REPO/.claude/worktrees/bridge-build-$STAMP"
 status running "building $VER ($SHA) in $BUILD_TREE"
 git worktree add --detach "$BUILD_TREE" nexalance
-cp -al "$REPO/node_modules" "$BUILD_TREE/node_modules"
+if [ -d "$REPO/node_modules" ] && [ -f "$BUILDS/.lock-root" ] && cmp -s package-lock.json "$BUILDS/.lock-root"; then
+  cp -al "$REPO/node_modules" "$BUILD_TREE/node_modules"
+else
+  (cd "$BUILD_TREE" && npm ci --no-fund --no-audit) || fail "Dependency install failed; live service untouched"
+fi
 cd "$BUILD_TREE"
 node nexa/apply.mjs
 if ! (
   npm run typecheck:core &&
-  node scripts/check/check-tsc-ratchet.mjs --ratchet &&
-  node --import tsx/esm --test tests/unit/agent-bridge-native-transport.test.ts tests/unit/agent-bridge-runtime-state.test.ts tests/unit/traffic-inspector-event-stream.test.ts tests/unit/mitm-server-claude-code-routing.test.ts &&
+  NODE_OPTIONS=--max-old-space-size=8192 node scripts/check/check-tsc-ratchet.mjs --ratchet | tee "$OUTDIR/tsc-ratchet.log" &&
+  ! grep -q 'tscErrors=SKIP' "$OUTDIR/tsc-ratchet.log" &&
+  node --import tsx/esm --test tests/unit/agent-bridge-native-transport.test.ts tests/unit/agent-bridge-runtime-state.test.ts tests/unit/traffic-inspector-event-stream.test.ts tests/unit/agent-bridge-selected-dns.test.ts tests/unit/security/audit-remediation.test.ts tests/unit/security/audit-remediation-guards.test.ts tests/unit/provider-validation-ssrf-guard.test.ts tests/unit/combo-diagnostics-trace.test.ts tests/unit/idempotency-fusion-collision.test.ts tests/unit/mitm-server-claude-code-routing.test.ts &&
   npm run build:release && npm run build:cli-api && npm run build:cli &&
   OMNIROUTE_ALLOW_CANARY_BUILD=1 npm run check:pack-artifact &&
   "${NPM[@]}" pack --pack-destination "$OUTDIR"
 ); then node nexa/restore.mjs; fail "Build/validation failed; live service untouched; isolated build kept"; fi
+# Desktop shell uses the same overlay build; failure retains the installed shell.
+if [ -d "$REPO/electron/node_modules" ] && [ -f "$BUILDS/.lock-electron" ] && cmp -s electron/package-lock.json "$BUILDS/.lock-electron"; then
+  cp -al "$REPO/electron/node_modules" electron/node_modules
+else
+  (cd electron && npm ci --no-fund --no-audit) || (cd electron && npm install --no-fund --no-audit)
+fi
+if (cd electron && npm run prepare:bundle && npx --no-install electron-builder --dir --arm64); then
+  ditto electron/dist-electron/mac-arm64/OmniRoute.app "$OUTDIR/OmniRoute.app"
+else say "WARNING: desktop build failed; installed shell will be retained"; fi
 node nexa/restore.mjs
-TGZ="$OUTDIR/omniroute-$VER.tgz"
+git checkout upstream-main -- bin/cli/api-commands electron/package-lock.json
+fi
 node "$TOOLS/bridge-gate.mjs" package "$TGZ" > "$OUTDIR/bridge-package-verification.json"
+node "$TOOLS/smoke-package.mjs" "$TGZ" "$BUILDS/smoke-$STAMP" > "$OUTDIR/isolated-smoke-$STAMP.json" || fail "Isolated package smoke failed; live service untouched"
 if [ "$MODE" = build-only ]; then status ok "verified package built at $TGZ; live service untouched"; exit 0; fi
 cd "$REPO"
 python3 "$TOOLS/snapshot-local.py" "$DATA_DIR/update-backups/$STAMP" > "$OUTDIR/private-backup-location.json"
@@ -69,7 +96,23 @@ stop_svc
 if "${NPM[@]}" install -g --prefix "$RUNTIME" --no-fund --no-audit "$TGZ" && start_svc && wait_ready; then
   printf '%s\n' "$PREV" > "$BUILDS/previous"
   printf '%s\n' "$TGZ" > "$BUILDS/current"
-  status ok "running $VER ($SHA), service and native Bridge TLS checks passed"
+  if [ -d "$OUTDIR/OmniRoute.app" ]; then
+    APP=/Applications/OmniRoute.app
+    WAS_OPEN=0; pgrep -f "$APP/Contents/MacOS/OmniRoute" >/dev/null && WAS_OPEN=1
+    pkill -TERM -f "$APP/Contents/MacOS/OmniRoute" 2>/dev/null || true
+    sleep 2
+    mkdir -p "$BUILDS/app-backups"
+    [ ! -d "$APP" ] || mv "$APP" "$BUILDS/app-backups/OmniRoute-$STAMP.app"
+    if ditto "$OUTDIR/OmniRoute.app" "$APP"; then
+      [ "$WAS_OPEN" = 0 ] || env -u ELECTRON_RUN_AS_NODE open -a "$APP"
+    else
+      [ ! -e "$APP" ] || mv "$APP" "$BUILDS/app-backups/failed-$STAMP.app"
+      [ ! -d "$BUILDS/app-backups/OmniRoute-$STAMP.app" ] || mv "$BUILDS/app-backups/OmniRoute-$STAMP.app" "$APP"
+      say "WARNING: desktop copy failed; installed shell restored"
+    fi
+  fi
+  git -C "$REPO" push origin nexalance upstream-main || say "WARNING: fork backup push failed"
+  status ok "running $VER ($SHA), isolated package and native Bridge TLS checks passed"
 else
   status running "deploy failed; restoring the verified previous Bridge build"
   stop_svc

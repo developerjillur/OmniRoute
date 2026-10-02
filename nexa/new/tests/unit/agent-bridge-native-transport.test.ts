@@ -55,6 +55,14 @@ test("native messages retain protocol, compressed bodies, status and selected ho
     max_tokens: 16,
     stream: false,
     messages: [{ role: "user", content: "Synthetic test" }],
+    system: [{ type: "text", text: "Synthetic system", cache_control: { type: "ephemeral" } }],
+    tools: [
+      {
+        name: "synthetic_tool",
+        description: "Fixture",
+        input_schema: { type: "object", properties: {} },
+      },
+    ],
     thinking: { type: "adaptive" },
     output_config: { effort: "high" },
   };
@@ -119,31 +127,6 @@ test("native messages retain protocol, compressed bodies, status and selected ho
     child.once("exit", () => {
       clearTimeout(timer);
       reject(new Error("Bridge exited before ready"));
-    });
-  });
-  await t.test("TLS health identifies the selected native transport", async () => {
-    const health = await new Promise<string>((resolve, reject) => {
-      const request = https.get(
-        {
-          hostname: "127.0.0.1",
-          port,
-          servername: "api.anthropic.com",
-          ca: fs.readFileSync(cert),
-          path: "/__omniroute_bridge_health",
-        },
-        (res) => {
-          let body = "";
-          res.on("data", (chunk) => (body += chunk));
-          res.on("end", () => resolve(body));
-        }
-      );
-      request.on("error", reject);
-    });
-    assert.deepEqual(JSON.parse(health), {
-      ok: true,
-      transportVersion: 1,
-      port,
-      targetAgent: "claude-code",
     });
   });
   for (const kind of [
@@ -219,4 +202,29 @@ test("native messages retain protocol, compressed bodies, status and selected ho
       else assert.doesNotThrow(() => JSON.parse(response.body));
     });
   }
+  await t.test("TLS health identifies the selected native transport", async () => {
+    const health = await new Promise<string>((resolve, reject) => {
+      const request = https.get(
+        {
+          hostname: "127.0.0.1",
+          port,
+          servername: "api.anthropic.com",
+          ca: fs.readFileSync(cert),
+          path: "/__omniroute_bridge_health",
+        },
+        (res) => {
+          let body = "";
+          res.on("data", (chunk) => (body += chunk));
+          res.on("end", () => resolve(body));
+        }
+      );
+      request.on("error", reject);
+    });
+    assert.deepEqual(JSON.parse(health), {
+      ok: true,
+      transportVersion: 1,
+      port,
+      targetAgent: "claude-code",
+    });
+  });
 });

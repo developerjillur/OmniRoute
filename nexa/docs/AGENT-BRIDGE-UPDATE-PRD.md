@@ -28,4 +28,8 @@ Synthetic transport fixtures reproduce the original shared-host failure before t
 
 No finite gate can guarantee every future vendor protocol or identical model output quality. New models require supported provider routing. Cloud routines remain tied to their execution account. Additional OAuth accounts require the owner to complete their normal sign-in; credentials must never be copied into this repository.
 
-The local nginx ingress remains a machine deployment concern. Its regeneration and certificate renewal need operational verification, independent of the upstream transport fix.
+The previous nginx ingress depended on Local being open and caused native login to fail after reboot. A dedicated macOS LaunchDaemon now forwards only encrypted bytes from IPv4/IPv6 loopback port 443 to the Bridge on 8443, dropping to nobody after binding. It does not own a certificate or decrypt traffic. If the local listener is unavailable, it can resolve the original vendor with public DNS and forward the untouched TLS connection directly. Native quota remains relevant during that fallback window.
+
+The local readiness and Bridge socket windows are 600 seconds. A verified log showed a long Opus request cut off by the former 95-second content readiness watchdog. The longer window preserves normal fast responses while giving long reasoning more time; it does not guarantee availability when the provider itself fails.
+
+The updater preserves existing archives, uses isolated worktrees and out-of-band package smoke, rejects unmeasured TypeScript gates, and checks both native ingress and backend TLS. An interrupted update lock is recoverable. Desktop rebuild remains best effort and preserves the last working shell. Source deployment tools are versioned under nexa/deploy; the installed command must prefer these over the older portable kit script.
