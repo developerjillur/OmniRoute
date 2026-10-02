@@ -1,17 +1,24 @@
 diff --git a/src/mitm/manager.ts b/src/mitm/manager.ts
-index c3acc2491..57c9f58ba 100644
+index c3acc2491..1ed89d1f1 100644
 --- a/src/mitm/manager.ts
 +++ b/src/mitm/manager.ts
-@@ -2,6 +2,8 @@ import { spawn, type ChildProcess } from "child_process";
+@@ -2,6 +2,15 @@ import { spawn, type ChildProcess } from "child_process";
  import path from "path";
  import fs from "fs";
  import { resolveMitmDataDir } from "./dataDir.ts";
-+import { getBridgeProcessState, releaseExitedBridgeChild } from "./processLifecycle.ts";
++import {
++  getBridgeProcessState,
++  releaseExitedBridgeChild,
++  waitForBridgeReady,
++  terminateBridgeChild,
++  isOwnedBridgePid,
++  removeOwnedBridgePid,
++} from "./processLifecycle.ts";
 +import { readBridgeRuntimeStatus, writeBridgeIntent, readBridgeIntent } from "./runtimeState.ts";
  import {
    removeDNSEntry,
    removeDNSEntries,
-@@ -71,8 +73,7 @@ export function interpretMitmStartupError(stderr: string, port: number): string
+@@ -71,8 +80,7 @@ export function interpretMitmStartupError(stderr: string, port: number): string
  }
  
  // Store server process
@@ -21,7 +28,7 @@ index c3acc2491..57c9f58ba 100644
  
  /**
   * Test-only seam: install a fake server process (and pid) so stopMitm() can be
-@@ -81,17 +82,16 @@ let serverPid: number | null = null;
+@@ -81,17 +89,16 @@ let serverPid: number | null = null;
   * ordering (#1809). No-op in production code paths.
   */
  export function __setServerProcessForTest(proc: ChildProcess | null, pid: number | null): void {
@@ -43,7 +50,7 @@ index c3acc2491..57c9f58ba 100644
  
  /**
   * Attempt to acquire the single-flight "MITM server is starting" lock.
-@@ -102,14 +102,14 @@ let mitmStarting = false;
+@@ -102,14 +109,14 @@ let mitmStarting = false;
   * (DNS/cert/spawn).
   */
  export function tryAcquireMitmStartLock(): boolean {
@@ -61,7 +68,7 @@ index c3acc2491..57c9f58ba 100644
  }
  
  // Set when getMitmStatus() finds a stale PID file (server died without clean
-@@ -119,7 +119,6 @@ let _orphanedStateDetected = false;
+@@ -119,7 +126,6 @@ let _orphanedStateDetected = false;
  
  // Guards installCleanupHandlers() so the parent-process signal handlers are
  // registered at most once. (Gap 7.)
@@ -69,7 +76,7 @@ index c3acc2491..57c9f58ba 100644
  
  // Module-scoped password cache (not exposed on globalThis).
  // Cleared automatically when the MITM proxy is stopped.
-@@ -288,8 +287,8 @@ export async function repairMitm(sudoPassword: string): Promise<{ repaired: stri
+@@ -288,8 +294,8 @@ export async function repairMitm(sudoPassword: string): Promise<{ repaired: stri
   * Idempotent; never blocks process exit. (Gap 7.)
   */
  export function installCleanupHandlers(): void {
@@ -80,7 +87,7 @@ index c3acc2491..57c9f58ba 100644
    const onSignal = (signal: string) => {
      void handleExitCleanup(signal);
    };
-@@ -327,11 +326,20 @@ export async function handleExitCleanup(
+@@ -327,11 +333,20 @@ export async function handleExitCleanup(
    };
  
    try {
@@ -102,7 +109,7 @@ index c3acc2491..57c9f58ba 100644
    const sudoPassword = deps.getCachedPassword();
    if (!sudoPassword) {
      _orphanedStateDetected = true;
-@@ -377,10 +385,15 @@ export async function getMitmStatus(agentId?: string): Promise<{
+@@ -377,23 +392,32 @@ export async function getMitmStatus(agentId?: string): Promise<{
    dnsConfigured: boolean;
    certExists: boolean;
    orphanedStateDetected: boolean;
@@ -120,7 +127,26 @@ index c3acc2491..57c9f58ba 100644
  
    if (!running) {
      try {
-@@ -433,6 +446,7 @@ export async function getMitmStatus(agentId?: string): Promise<{
+       if (fs.existsSync(PID_FILE)) {
+         const savedPid = parseInt(fs.readFileSync(PID_FILE, "utf-8").trim(), 10);
+-        if (savedPid && isProcessAlive(savedPid)) {
++        if (
++          savedPid &&
++          isProcessAlive(savedPid) &&
++          isOwnedBridgePid(savedPid, resolveMitmServerPath())
++        ) {
+           running = true;
+           pid = savedPid;
+         } else {
+           // Stale PID file: the server died without clean teardown. We cannot
+           // run privileged cleanup here (no sudo password in a status read),
+           // so flag it for the dashboard to offer a one-click Repair. (Gap 7.)
+-          fs.unlinkSync(PID_FILE);
++          removeOwnedBridgePid(PID_FILE, savedPid);
+           _orphanedStateDetected = true;
+           log.warn("Stale MITM PID file found — system state may be orphaned (offer Repair).");
+         }
+@@ -433,6 +457,7 @@ export async function getMitmStatus(agentId?: string): Promise<{
      dnsConfigured,
      certExists,
      orphanedStateDetected: _orphanedStateDetected,
@@ -128,7 +154,7 @@ index c3acc2491..57c9f58ba 100644
    };
  }
  
-@@ -446,18 +460,23 @@ export async function startMitm(
+@@ -446,18 +471,23 @@ export async function startMitm(
    sudoPassword: string,
    options: { port?: number } = {}
  ): Promise<{ running: true; pid: number | null; certTrusted: boolean }> {
@@ -154,7 +180,7 @@ index c3acc2491..57c9f58ba 100644
      return await startMitmInternal(apiKey, sudoPassword, options);
    } finally {
      releaseMitmStartLock();
-@@ -597,7 +616,7 @@ async function startMitmInternal(
+@@ -597,7 +627,7 @@ async function startMitmInternal(
      options.port > 0 &&
      options.port <= 65535
        ? options.port
@@ -163,7 +189,7 @@ index c3acc2491..57c9f58ba 100644
    // D4 — resolve the inspector ingest token so the spawned proxy can post
    // captured AgentBridge traffic to the local-only ingest endpoint. The token
    // is shared with the OmniRoute process: getIngestTokenForBootstrap() returns
-@@ -615,7 +634,7 @@ async function startMitmInternal(
+@@ -615,7 +645,7 @@ async function startMitmInternal(
      }
    }
  
@@ -172,7 +198,7 @@ index c3acc2491..57c9f58ba 100644
      windowsHide: true,
      env: {
        ...process.env,
-@@ -632,17 +651,8 @@ async function startMitmInternal(
+@@ -632,17 +662,8 @@ async function startMitmInternal(
      stdio: ["ignore", "pipe", "pipe"],
    });
  
@@ -192,7 +218,7 @@ index c3acc2491..57c9f58ba 100644
  
    // Buffer recent stderr so a startup failure can be reported with its real
    // cause (capped to avoid unbounded growth on a chatty/looping process). (#3606)
-@@ -661,15 +671,7 @@ async function startMitmInternal(
+@@ -661,50 +682,18 @@ async function startMitmInternal(
  
    proc.on("exit", (code) => {
      log.info({ exitCode: code }, "MITM server exited");
@@ -206,10 +232,51 @@ index c3acc2491..57c9f58ba 100644
 -      // Ignore
 -    }
 +    releaseExitedBridgeChild(lifecycle, proc, PID_FILE);
++  });
++  proc.on("error", (error) => {
++    log.error({ err: error }, "MITM child could not be spawned");
++    releaseExitedBridgeChild(lifecycle, proc, PID_FILE);
    });
  
    // Wait and verify server actually started
-@@ -722,22 +724,32 @@ async function startMitmInternal(
+-  const started = await new Promise<boolean>((resolve) => {
+-    let resolved = false;
+-    const timeout = setTimeout(() => {
+-      if (!resolved) {
+-        resolved = true;
+-        resolve(true);
+-      }
+-    }, 2000);
+-
+-    proc.on("exit", () => {
+-      clearTimeout(timeout);
+-      if (!resolved) {
+-        resolved = true;
+-        resolve(false);
+-      }
+-    });
+-
+-    // Fail fast on any "❌" diagnostic line from server.cjs (covers EADDRINUSE,
+-    // EACCES, missing ROUTER_API_KEY, and any other server.on("error") cause).
+-    proc.stderr?.on("data", (data) => {
+-      const msg = data.toString();
+-      if (msg.includes("❌")) {
+-        clearTimeout(timeout);
+-        if (!resolved) {
+-          resolved = true;
+-          resolve(false);
+-        }
+-      }
+-    });
+-  });
++  const started = await waitForBridgeReady(proc, port);
+ 
+   if (!started) {
++    await terminateBridgeChild(proc);
+     // Step 3 above already wrote the /etc/hosts entries. Leaving them behind
+     // points every AgentBridge target hostname at 127.0.0.1:<port>, where the
+     // service that actually owns the port answers with a TLS alert — so the
+@@ -722,31 +711,37 @@ async function startMitmInternal(
      throw new Error(interpretMitmStartupError(stderrBuffer, port));
    }
  
@@ -244,19 +311,38 @@ index c3acc2491..57c9f58ba 100644
 +  const proc = lifecycle.serverProcess;
    if (proc && !proc.killed) {
      log.info("Stopping MITM server...");
-     proc.kill("SIGTERM");
-@@ -745,8 +757,8 @@ async function killMitmServerProcessOnStop(): Promise<void> {
-     if (!proc.killed) {
-       proc.kill("SIGKILL");
-     }
+-    proc.kill("SIGTERM");
+-    await new Promise((resolve) => setTimeout(resolve, 1000));
+-    if (!proc.killed) {
+-      proc.kill("SIGKILL");
+-    }
 -    serverProcess = null;
 -    serverPid = null;
++    await terminateBridgeChild(proc);
 +    lifecycle.serverProcess = null;
 +    lifecycle.serverPid = null;
      return;
    }
  
-@@ -766,8 +778,8 @@ async function killMitmServerProcessOnStop(): Promise<void> {
+@@ -754,11 +749,15 @@ async function killMitmServerProcessOnStop(): Promise<void> {
+   try {
+     if (fs.existsSync(PID_FILE)) {
+       const savedPid = parseInt(fs.readFileSync(PID_FILE, "utf-8").trim(), 10);
+-      if (savedPid && isProcessAlive(savedPid)) {
++      if (
++        savedPid &&
++        isProcessAlive(savedPid) &&
++        isOwnedBridgePid(savedPid, resolveMitmServerPath())
++      ) {
+         log.info({ pid: savedPid }, "Killing MITM server by PID...");
+         process.kill(savedPid, "SIGTERM");
+         await new Promise((resolve) => setTimeout(resolve, 1000));
+-        if (isProcessAlive(savedPid)) {
++        if (isProcessAlive(savedPid) && isOwnedBridgePid(savedPid, resolveMitmServerPath())) {
+           process.kill(savedPid, "SIGKILL");
+         }
+       }
+@@ -766,8 +765,8 @@ async function killMitmServerProcessOnStop(): Promise<void> {
    } catch {
      // Ignore
    }
@@ -267,7 +353,7 @@ index c3acc2491..57c9f58ba 100644
  }
  
  /**
-@@ -793,32 +805,41 @@ export async function stopMitm(
+@@ -793,32 +792,41 @@ export async function stopMitm(
      collectManagedHosts?: () => string[];
    }
  ): Promise<{ running: false; pid: null }> {

@@ -7,13 +7,13 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 74,
-    "patches": 47,
-    "new": 25,
+    "total": 77,
+    "patches": 49,
+    "new": 26,
     "tooling": 2,
     "upstreamCandidates": 6,
     "nexaSpecific": 19,
-    "needsReview": 49,
+    "needsReview": 52,
     "pendingUpstreamPR": 9,
     "mergedUpstreamPR": 0
   },
@@ -386,6 +386,14 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/tests__integration__agent-bridge-cert-flow.test.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "tests/integration/agent-bridge-cert-flow.test.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/tests__unit__classify429.test.ts.patch",
       "layer": "patch",
       "class": "needs-review",
@@ -403,6 +411,14 @@
         "pr": 15323,
         "state": "OPEN"
       }
+    },
+    {
+      "file": "patches/tests__unit__mitm-server-cjs-backpressure-14528.test.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "tests/unit/mitm-server-cjs-backpressure-14528.test.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
     },
     {
       "file": "patches/tsconfig.patch",
@@ -570,6 +586,14 @@
         "pr": 15323,
         "state": "OPEN"
       }
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-resilience.test.ts",
+      "layer": "new",
+      "class": "needs-review",
+      "target": "tests/unit/agent-bridge-resilience.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
     },
     {
       "file": "new/tests/unit/agent-bridge-runtime-state.test.ts",
