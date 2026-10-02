@@ -1,10 +1,10 @@
 diff --git a/CLAUDE.md b/CLAUDE.md
-index 324729d31..66a67c05f 100644
+index fb76678e0..6422d7d82 100644
 --- a/CLAUDE.md
 +++ b/CLAUDE.md
-@@ -2,6 +2,51 @@
- 
- This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+@@ -7,6 +7,51 @@ assistant (architecture, conventions, testing, quality gates, git workflow, the
+ PII learnings). Read it in full; do not re-add project rules here. Everything below applies ONLY
+ to Claude Code — operational refinements of rules already defined in `AGENTS.md`.
  
 +---
 +
@@ -51,6 +51,6 @@ index 324729d31..66a67c05f 100644
 +
 +---
 +
- ## Quick Start
+ ## Worktree isolation — Claude Code specifics
  
- ```bash
+ The full mandatory worktree protocol (base-branch confirmation, `.claude/worktrees/` canonical

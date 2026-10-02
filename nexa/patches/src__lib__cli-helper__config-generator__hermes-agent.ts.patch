@@ -1,18 +1,13 @@
 diff --git a/src/lib/cli-helper/config-generator/hermes-agent.ts b/src/lib/cli-helper/config-generator/hermes-agent.ts
-index ee5d05fd2..e80cc2c7b 100644
+index 605f0781b..fd0b9a73b 100644
 --- a/src/lib/cli-helper/config-generator/hermes-agent.ts
 +++ b/src/lib/cli-helper/config-generator/hermes-agent.ts
-@@ -41,13 +41,42 @@ export const HERMES_AGENT_ROLES = [
-   { id: "web_extract", label: "Web Extract", description: "Web page / content extraction" },
-   { id: "skills_hub", label: "Skills Hub", description: "Skills and tool-use reasoning" },
-   { id: "approval", label: "Approval", description: "Safety and approval decisions" },
-+  // nexa: MoA writing-panel slots (moa.presets.client-reply) — the aggregator is the acting
-+  // writer; advisors are tool-less reference models.
-+  {
-+    id: "moa_aggregator",
-+    label: "MoA Aggregator (writer)",
-+    description: "Acting writer model of the MoA panel (moa.presets.client-reply)",
-+  },
+@@ -74,13 +74,37 @@ export const HERMES_AGENT_ROLES = [
+     label: "MoA Aggregator",
+     description: "Mixture-of-Agents synthesis model",
+   },
++  // nexa: MoA writing-panel slots (moa.presets.client-reply) — the aggregator (above) is the
++  // acting writer; advisors are tool-less reference models.
 +  {
 +    id: "moa_advisor_1",
 +    label: "MoA Advisor 1",
@@ -45,9 +40,9 @@ index ee5d05fd2..e80cc2c7b 100644
  }
  
  export interface HermesAgentConfigPayload {
-@@ -120,9 +149,34 @@ export async function generateHermesAgentConfig(
-     },
-   };
+@@ -181,9 +205,34 @@ export async function generateHermesAgentConfig(
+     if (Object.keys(next.providers).length === 0) delete next.providers;
+   }
  
 +  // nexa: helper — merge a reasoning effort into an auxiliary task's extra_body without
 +  // clobbering other extra_body keys. effort "none" clears the override.
@@ -80,9 +75,9 @@ index ee5d05fd2..e80cc2c7b 100644
  
      if (role === "default") {
        next.model = {
-@@ -139,16 +193,52 @@ export async function generateHermesAgentConfig(
-         base_url: `${normalizedBase}/v1`,
-         api_key: resolvedKey,
+@@ -197,14 +246,50 @@ export async function generateHermesAgentConfig(
+         model,
+         provider: "omniroute",
        };
 +    } else if ((MOA_ROLE_IDS as readonly string[]).includes(role)) {
 +      // nexa: MoA panel slots → moa.presets.client-reply (non-destructive merge — any field
@@ -127,14 +122,12 @@ index ee5d05fd2..e80cc2c7b 100644
 +        ...(next.auxiliary[role] || {}),
          provider: "omniroute",
          model,
-         base_url: `${normalizedBase}/v1`,
-         api_key: resolvedKey,
        };
 +      if (effort) setAuxEffort(role, effort);
      }
    }
  
-@@ -206,5 +296,23 @@ export async function getCurrentHermesAgentRoles(): Promise<
+@@ -267,5 +352,23 @@ export async function getCurrentHermesAgentRoles(): Promise<
      }
    }
  

@@ -1,21 +1,22 @@
 diff --git a/Dockerfile b/Dockerfile
-index 81df902f1..3a32c831a 100644
+index 897c8dbe5..05b0a0758 100644
 --- a/Dockerfile
 +++ b/Dockerfile
-@@ -21,7 +21,11 @@ RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt,sharing=shared \
- # but the container scanner flags the stale copies under
- # /usr/local/lib/node_modules/npm/node_modules. npm is not invoked at runtime in
- # the runner stages, so this is hygiene, not an exploitable runtime path.
--RUN npm install -g npm@latest \
+@@ -41,8 +41,12 @@ RUN --mount=type=cache,id=s/92ca8a61-c1ba-421f-a389-d48ac7258c2d-apt-cache,targe
+ # tar ^7.5.4 and undici ^6.25.0 — hence undici stays on the 6.x line, NOT 8.x).
+ # --install-strategy=nested makes each replacement self-contained, so it cannot
+ # perturb the versions the rest of npm's flat tree resolves.
 +# nexa: PIN npm instead of floating @latest — npm releases after 11.16 changed
 +# `npm rebuild` to block install scripts not covered by allowScripts, which breaks
 +# the better-sqlite3 native-binding compile below (build failed 2026-07-16 when
 +# @latest moved). 11.16.0 is verified working; bump deliberately, never floating.
-+RUN npm install -g npm@11.16.0 \
-   && npm cache clean --force
- 
- # ── Builder ────────────────────────────────────────────────────────────────
-@@ -36,6 +40,13 @@ RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt,sharing=shared \
+ RUN set -eux; \
+-  npm install -g npm@latest; \
++  npm install -g npm@11.16.0; \
+   npm install --prefix /tmp/npm-cve-patch --no-audit --no-fund --ignore-scripts \
+     --install-strategy=nested \
+     brace-expansion@5.0.9 ip-address@10.7.2 tar@7.5.22 undici@6.28.0; \
+@@ -75,6 +79,13 @@ RUN --mount=type=cache,id=s/92ca8a61-c1ba-421f-a389-d48ac7258c2d-apt-cache,targe
    && rm -rf /var/lib/apt/lists/*
  
  COPY package*.json ./

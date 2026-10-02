@@ -1,18 +1,10 @@
 diff --git a/tests/unit/classify429.test.ts b/tests/unit/classify429.test.ts
-index 668de125d..89f74f0cd 100644
+index 9e9ab184f..ad1017a4c 100644
 --- a/tests/unit/classify429.test.ts
 +++ b/tests/unit/classify429.test.ts
-@@ -2,6 +2,7 @@ import { test } from "node:test";
- import assert from "node:assert/strict";
- import {
-   classify429,
-+  classify429FromError,
-   looksLikeQuotaExhausted,
-   parseRetryAfter,
-   retryAfterFromResponse,
-@@ -207,3 +208,44 @@ test("retryAfterFromResponse: case-insensitive header lookup", () => {
-   assert.equal(retryAfterFromResponse({ headers: {} }), null);
-   assert.equal(retryAfterFromResponse({}), null);
+@@ -513,3 +513,44 @@ test("classify429: Moonshot engine overloaded stays rate_limit", () => {
+     "rate_limit"
+   );
  });
 +
 +// --- Anthropic subscription extra-usage exhaustion (arrives as HTTP 400) ---

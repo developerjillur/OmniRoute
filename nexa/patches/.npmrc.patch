@@ -1,11 +1,11 @@
 diff --git a/.npmrc b/.npmrc
-index c6dba7326..745be217d 100644
+index 4e3c82f07..336992e8f 100644
 --- a/.npmrc
 +++ b/.npmrc
-@@ -12,3 +12,19 @@ fetch-retries=5
- fetch-retry-factor=4
- fetch-retry-mintimeout=20000
- fetch-retry-maxtimeout=120000
+@@ -21,3 +21,19 @@ fetch-retry-maxtimeout=120000
+ # which previously left `@huggingface/transformers` missing after `npm install`
+ # and broke startup with a crash in the transformers loader.
+ onnxruntime-node-install=skip
 +
 +# npm 11.16 blocks package lifecycle scripts unless they are allowlisted
 +# (`allow-scripts` defaults to empty, `dangerously-allow-all-scripts=false`).

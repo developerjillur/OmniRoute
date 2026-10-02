@@ -1,8 +1,8 @@
 diff --git a/scripts/build/assembleStandalone.mjs b/scripts/build/assembleStandalone.mjs
-index 6ee88d5..5143434 100644
+index 671fe636f..bc5795fc4 100644
 --- a/scripts/build/assembleStandalone.mjs
 +++ b/scripts/build/assembleStandalone.mjs
-@@ -165,6 +165,13 @@ const EXTRA_MODULE_ENTRIES = [
+@@ -388,6 +388,13 @@ export const EXTRA_MODULE_ENTRIES = [
      src: ["scripts", "build", "bootstrap-env.mjs"],
      dest: ["build", "bootstrap-env.mjs"],
    },
@@ -14,5 +14,5 @@ index 6ee88d5..5143434 100644
 +    dest: ["build", "startupGuard.mjs"],
 +  },
    {
-     label: "healthcheck script",
-     src: ["scripts", "dev", "healthcheck.mjs"],
+     label: "normalizeBasePath helper",
+     src: ["scripts", "build", "normalizeBasePath.mjs"],

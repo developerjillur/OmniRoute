@@ -1,17 +1,17 @@
 diff --git a/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaCardExpanded.tsx b/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaCardExpanded.tsx
-index a672cd978..0a37670f3 100644
+index 8dcc5c339..125cac27e 100644
 --- a/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaCardExpanded.tsx
 +++ b/src/app/(dashboard)/dashboard/usage/components/ProviderLimits/parts/QuotaCardExpanded.tsx
-@@ -12,6 +12,8 @@ import {
- import QuotaMiniBar from "../QuotaMiniBar";
- import { translateUsageOrFallback, type UsageTranslationValues } from "../i18nFallback";
- import { hasFixedQuotaOrder } from "../quotaParsing";
+@@ -27,6 +27,8 @@ import {
+   sortQuotasByWindow,
+ } from "../quotaParsing";
+ import KiloPassMeter from "./KiloPassMeter";
 +// nexa overlay: additive per-account catalog-model enumeration (display-only).
 +import QuotaModelList from "./QuotaModelList";
  
  const CURRENCY_SYMBOLS: Record<string, string> = {
    USD: "$",
-@@ -254,6 +256,10 @@ export default function QuotaCardExpanded({
+@@ -447,6 +449,10 @@ export default function QuotaCardExpanded({
          </button>
        )}
  
@@ -19,6 +19,6 @@ index a672cd978..0a37670f3 100644
 +          below the quota windows; returns null for non-Codex providers. */}
 +      {!loading && !error && providerId ? <QuotaModelList provider={providerId} /> : null}
 +
-       <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/40">
+       <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-border/40">
          {refreshedLabel && (
            <span

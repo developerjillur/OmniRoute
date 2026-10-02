@@ -1,8 +1,8 @@
 diff --git a/bin/omniroute.mjs b/bin/omniroute.mjs
-index 77f7418..b94b200 100755
+index f9e785bd6..2d1236212 100755
 --- a/bin/omniroute.mjs
 +++ b/bin/omniroute.mjs
-@@ -85,8 +85,19 @@ function loadEnvFile() {
+@@ -188,8 +188,19 @@ function loadEnvFile() {
      }
    }
  
@@ -21,5 +21,5 @@ index 77f7418..b94b200 100755
 +    if (machineOutput) process.stderr.write(line + "\n");
 +    else console.log(line);
    }
- }
  
+   for (const [key, { winner, loser }] of shadowed) {

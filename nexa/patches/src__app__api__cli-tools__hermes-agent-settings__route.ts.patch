@@ -1,10 +1,10 @@
 diff --git a/src/app/api/cli-tools/hermes-agent-settings/route.ts b/src/app/api/cli-tools/hermes-agent-settings/route.ts
-index 69c98f430..3bdc0964e 100644
+index daf2fb0c3..9ca7b4538 100644
 --- a/src/app/api/cli-tools/hermes-agent-settings/route.ts
 +++ b/src/app/api/cli-tools/hermes-agent-settings/route.ts
-@@ -21,6 +21,9 @@ const hermesAgentSettingsSchema = z.object({
+@@ -31,6 +31,9 @@ const hermesAgentSettingsSchema = z.object({
        z.object({
-         role: z.string(),
+         role: z.enum(hermesRoleIds),
          model: z.string(),
 +        // nexa: optional per-role reasoning effort (none|low|medium|high|xhigh) —
 +        // written as extra_body.reasoning_effort on the role's auxiliary block.

@@ -1,0 +1,15 @@
+diff --git a/src/i18n/messages/en.json b/src/i18n/messages/en.json
+index 5544b968d..7242f1f30 100644
+--- a/src/i18n/messages/en.json
++++ b/src/i18n/messages/en.json
+@@ -3159,6 +3159,10 @@
+     "hermesRoleMoaReferenceDesc": "Mixture-of-Agents reference model",
+     "hermesRoleMoaAggregator": "MoA Aggregator",
+     "hermesRoleMoaAggregatorDesc": "Mixture-of-Agents synthesis model",
++    "hermesRoleMoaAdvisor1": "MoA Advisor 1",
++    "hermesRoleMoaAdvisor1Desc": "Tool-less reference advisor 1 of the MoA panel",
++    "hermesRoleMoaAdvisor2": "MoA Advisor 2",
++    "hermesRoleMoaAdvisor2Desc": "Tool-less reference advisor 2 of the MoA panel",
+     "hermesSelectBeforePreview": "Select models for roles, or ensure the roles are loaded, before previewing.",
+     "hermesPreviewFailed": "Failed to generate preview",
+     "hermesSavedTo": "Saved to {path}",

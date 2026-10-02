@@ -1,33 +1,34 @@
 diff --git a/src/app/api/v1/models/catalog.ts b/src/app/api/v1/models/catalog.ts
-index 7373310..d363f18 100644
+index 28b1c56d2..d8757c159 100644
 --- a/src/app/api/v1/models/catalog.ts
 +++ b/src/app/api/v1/models/catalog.ts
-@@ -10,6 +10,7 @@ import {
-   getModelAliases,
- } from "@/lib/localDb";
+@@ -6,6 +6,7 @@ import { getSettings } from "@/lib/db/settings";
+ import { getUserDatabaseSettings } from "@/lib/db/databaseSettings";
+ import { createLazyConnectionView } from "@/lib/db/providers/lazyConnectionView";
  import { extractAliasBackedModels } from "./aliasBackedModels";
-+import { getCoalescedCatalog } from "./catalogCache";
- import { appendNoThinkingVariants } from "@omniroute/open-sse/utils/noThinkingAlias";
- import { getAllEmbeddingModels } from "@omniroute/open-sse/config/embeddingRegistry";
- import { getAllImageModels } from "@omniroute/open-sse/config/imageRegistry";
-@@ -82,11 +83,33 @@ import { getModelCatalogAuthRejection, isCodexModelCatalogClient } from "./catal
- export { isVisionModelId } from "@/shared/constants/visionModels";
- export { getCustomVisionCapabilityFields };
++import { getCoalescedCatalog } from "./nexaCatalogCache";
+ import {
+   buildSyncedModelIdsByCanonicalProvider,
+   shouldSuppressStaticModelForExclusiveListing,
+@@ -184,6 +185,29 @@ function yieldCatalogBuildTurn(): Promise<void> {
+   return new Promise((resolve) => setImmediate(resolve));
+ }
  
 +/**
 + * Public entry point: unified OpenAI-compatible model catalog, behind a
 + * short-TTL request-coalescing cache (QA P1 — fixes the concurrent-`/v1/models`
-+ * latency stair-step). Preserves the exact `(request, corsHeaders)` signature so
++ * latency stair-step). Preserves the exact `(request, corsHeaders, options)` signature so
 + * every existing caller is unchanged; the heavy build lives in
 + * `buildUnifiedModelsResponse`. The caller's CORS headers + cache-diagnostic
 + * headers are (re)applied on the returned (possibly cached) Response.
 + */
 +export async function getUnifiedModelsResponse(
 +  request: Request,
-+  corsHeaders: Record<string, string> = {}
++  corsHeaders: Record<string, string> = {},
++  options: { scheduleBackgroundRefresh?: BackgroundRefreshScheduler } = {}
 +): Promise<Response> {
 +  const { response, cacheStatus, buildMs } = await getCoalescedCatalog(request, () =>
-+    buildUnifiedModelsResponse(request, corsHeaders)
++    buildUnifiedModelsResponse(request, corsHeaders, options)
 +  );
 +  // snapshotToResponse hands back a fresh Response, so mutating its headers is safe.
 +  for (const [k, v] of Object.entries(corsHeaders)) response.headers.set(k, v);
@@ -39,9 +40,12 @@ index 7373310..d363f18 100644
  /**
   * Build unified OpenAI-compatible model catalog response.
   * Reused by `/api/v1/models` and `/api/v1` to avoid semantic drift (T09).
+@@ -193,7 +217,7 @@ function yieldCatalogBuildTurn(): Promise<void> {
+  * rebuild starts only once the stale body has been flushed. Omitted by non-route
+  * callers, which fall back to the cache module's own default.
   */
 -export async function getUnifiedModelsResponse(
 +async function buildUnifiedModelsResponse(
    request: Request,
-   corsHeaders: Record<string, string> = {}
- ) {
+   corsHeaders: Record<string, string> = {},
+   options: { scheduleBackgroundRefresh?: BackgroundRefreshScheduler } = {}

@@ -1,8 +1,8 @@
 diff --git a/src/app/api/v1/chat/completions/route.ts b/src/app/api/v1/chat/completions/route.ts
-index bddf765d0..6e9a2cf80 100644
+index 4fa2ad9e4..058a07fa3 100644
 --- a/src/app/api/v1/chat/completions/route.ts
 +++ b/src/app/api/v1/chat/completions/route.ts
-@@ -12,6 +12,11 @@ import {
+@@ -32,6 +32,11 @@ import {
    readCompressionRequestHeader,
    withCompressionHeaderEcho,
  } from "@/shared/utils/compressionHeaderEcho";
@@ -11,43 +11,47 @@ index bddf765d0..6e9a2cf80 100644
 +  reasoningElicitationRequested,
 +  wrapReasoningResponse,
 +} from "@/lib/nexa/reasoningElicitation";
- 
- let initPromise = null;
- 
-@@ -114,6 +119,15 @@ export async function POST(request) {
-   // The parsed body is passed through UNTOUCHED — the actual stream/JSON framing
-   // stays decided by chatCore/resolveStreamFlag (legacy streaming default and the
-   // per-key `streamDefaultMode: "json"` opt-in are preserved).
-+  // nexa overlay: opt-in visible-reasoning elicitation for Claude/Codex models whose
-+  // reasoning is redacted/hidden upstream. Header-gated, so default (coding-agent)
-+  // traffic is byte-for-byte untouched. The request gets a <omni:reasoning> directive
-+  // here; the response is un-wrapped below (composed under the compression echo).
-+  const elicitReasoning = reasoningElicitationRequested(request);
-+  if (elicitReasoning && isRecord(parsedBody)) {
-+    injectReasoningElicitation(parsedBody.model, parsedBody);
-+  }
+ import { resolveModelAliasWithSeedFallbackOnBody } from "@/lib/modelAliasResolver";
+ import { enforceApiKeyPolicy } from "@/shared/utils/apiKeyPolicy";
+ import {
+@@ -273,6 +278,15 @@ export async function POST(request) {
+     // The parsed body is passed through UNTOUCHED — the actual stream/JSON framing
+     // stays decided by chatCore/resolveStreamFlag (legacy streaming default and the
+     // per-key `streamDefaultMode: "json"` opt-in are preserved).
++    // nexa overlay: opt-in visible-reasoning elicitation for Claude/Codex models whose
++    // reasoning is redacted/hidden upstream. Header-gated, so default (coding-agent)
++    // traffic is byte-for-byte untouched. The request gets a <omni:reasoning> directive
++    // here; the response is un-wrapped below (composed under the compression echo).
++    const elicitReasoning = reasoningElicitationRequested(request);
++    if (elicitReasoning && isRecord(parsedBody)) {
++      injectReasoningElicitation(parsedBody.model, parsedBody);
++    }
 +
-   const parsedBodyIsRecord = isRecord(parsedBody);
-   const acceptHeader = request.headers.get("accept") || "";
-   const acceptForcesStream =
-@@ -135,11 +149,15 @@ export async function POST(request) {
+     const parsedBodyIsRecord = isRecord(parsedBody);
+     const acceptHeader = request.headers.get("accept") || "";
+     const acceptForcesStream =
+@@ -313,15 +327,17 @@ export async function POST(request) {
          extraHeaders: { "X-Correlation-Id": reqId },
-       }
-     );
--    return withCompressionHeaderEcho(streamedResponse, compressionRequestHeader);
-+    const streamedFinal = elicitReasoning
-+      ? await wrapReasoningResponse(request, streamedResponse, true)
-+      : streamedResponse;
-+    return withCompressionHeaderEcho(streamedFinal, compressionRequestHeader);
-   }
+         deadlineController: routeDeadlineController,
+       });
+-      return withCompressionHeaderEcho(streamedResponse, compressionRequestHeader);
++      const streamedFinal = elicitReasoning
++        ? await wrapReasoningResponse(request, streamedResponse, true)
++        : streamedResponse;
++      return withCompressionHeaderEcho(streamedFinal, compressionRequestHeader);
+     }
  
--  return withCompressionHeaderEcho(
--    await handleChat(request, null, parsedBody),
--    compressionRequestHeader
--  );
-+  const completion = await handleChat(request, null, parsedBody);
-+  const completionFinal = elicitReasoning
-+    ? await wrapReasoningResponse(request, completion, false)
-+    : completion;
-+  return withCompressionHeaderEcho(completionFinal, compressionRequestHeader);
- }
+-    return finishAdmission(
+-      withCompressionHeaderEcho(
+-        await handleChat(request, null, parsedBody, callerCorrelationId ?? undefined),
+-        compressionRequestHeader
+-      )
+-    );
++    const completion = await handleChat(request, null, parsedBody, callerCorrelationId ?? undefined);
++    const completionFinal = elicitReasoning
++      ? await wrapReasoningResponse(request, completion, false)
++      : completion;
++    return finishAdmission(withCompressionHeaderEcho(completionFinal, compressionRequestHeader));
+   } catch (error) {
+     admission.lease?.release();
+     throw error;

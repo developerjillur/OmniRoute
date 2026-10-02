@@ -1,12 +1,11 @@
 diff --git a/src/shared/utils/classify429.ts b/src/shared/utils/classify429.ts
-index ff6f21ab3..d00bb89e3 100644
+index 18f4fe23c..b3795c1c1 100644
 --- a/src/shared/utils/classify429.ts
 +++ b/src/shared/utils/classify429.ts
-@@ -53,6 +53,15 @@ const QUOTA_PATTERNS: ReadonlyArray<RegExp> = [
-   /individual quota reached/i,
+@@ -60,6 +60,15 @@ const QUOTA_PATTERNS: ReadonlyArray<RegExp> = [
    /enable overages/i,
    /INSUFFICIENT_G1_CREDITS_BALANCE/i,
-+
+ 
 +  // Anthropic subscription (Claude Code / Max) extra-usage exhaustion:
 +  // "You're out of extra usage. Add more at claude.ai/settings/usage and keep
 +  // going." Exactly the Antigravity failure shape above — no pattern matched, so
@@ -15,13 +14,14 @@ index ff6f21ab3..d00bb89e3 100644
 +  // healthy one. Note this arrives as HTTP **400**, not 429 — see classify429.
 +  /out of extra usage/i,
 +  /claude\.ai\/settings\/usage/i,
- ];
- 
- /**
-@@ -112,6 +121,15 @@ export function classify429(response: {
-   headers?: Record<string, string>;
-   body?: unknown;
- }): FailureKind {
++
+   // Google APIs return this generic RESOURCE_EXHAUSTED message when a
+   // billing-period quota has been consumed. Keep the reset-window qualifier
+   // so transient Google rate limits are not treated as long-term exhaustion.
+@@ -335,6 +344,15 @@ export function classify429(response: {
+   if (text && TERMINAL_QUOTA_PATTERNS.some((pat) => pat.test(text))) {
+     return "quota_exhausted";
+   }
 +  // A quota cap does not always arrive as 429. Anthropic reports subscription
 +  // extra-usage exhaustion as HTTP 400 ("You're out of extra usage…"), so those
 +  // bodies must be scanned too — otherwise the breaker sees `transient`, retries
@@ -31,6 +31,6 @@ index ff6f21ab3..d00bb89e3 100644
 +  if (response.status === 400) {
 +    return looksLikeQuotaExhausted(response.body) ? "quota_exhausted" : "transient";
 +  }
+   // Non-429 4xx/5xx responses that didn't match terminal patterns are
+   // still transient (the caller has already widened the scope from 429-only).
    if (response.status !== 429) return "transient";
-   if (looksLikeQuotaExhausted(response.body)) return "quota_exhausted";
-   return "rate_limit";

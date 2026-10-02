@@ -1,15 +1,15 @@
 diff --git a/next.config.mjs b/next.config.mjs
-index 415f5b9..df7cf52 100644
+index 834c7e078..e8603cc49 100644
 --- a/next.config.mjs
 +++ b/next.config.mjs
-@@ -6,10 +6,26 @@ import { fileURLToPath } from "node:url";
+@@ -15,10 +15,26 @@ import { shouldBuildStandalone } from "./scripts/build/backendOnlyPages.mjs";
  const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
  const distDir = process.env.NEXT_DIST_DIR || ".build/next";
  const projectRoot = dirname(fileURLToPath(import.meta.url));
 -const scriptSrc =
 -  process.env.NODE_ENV === "development"
--    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:"
--    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:";
+-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://static.cloudflareinsights.com"
+-    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://static.cloudflareinsights.com";
 +const isProdBuild = process.env.NODE_ENV === "production";
 +// Extra browser connect origins for non-loopback (LAN / Tailscale) deployments.
 +// Prod ships a tight connect-src by default; operators reaching OmniRoute over a
@@ -20,8 +20,8 @@ index 415f5b9..df7cf52 100644
 +// Next.js and React need no runtime eval, so removing it shrinks the XSS blast radius.
 +// `'unsafe-inline'` is retained until a nonce/hash migration lands (tracked separately).
 +const scriptSrc = isProdBuild
-+  ? "script-src 'self' 'unsafe-inline' blob:"
-+  : "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:";
++  ? "script-src 'self' 'unsafe-inline' blob: https://static.cloudflareinsights.com"
++  : "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://static.cloudflareinsights.com";
 +// Loopback origins are always allowed (the local standalone dashboard is served on
 +// localhost and opens a same-host Live WS). Dev additionally allows the broad
 +// `https: ws: wss:` schemes; prod does NOT — it stays loopback + opt-in extras.
@@ -33,7 +33,7 @@ index 415f5b9..df7cf52 100644
  const contentSecurityPolicy = [
    "default-src 'self'",
    "base-uri 'self'",
-@@ -21,11 +37,7 @@ const contentSecurityPolicy = [
+@@ -30,11 +46,7 @@ const contentSecurityPolicy = [
    "font-src 'self' https://fonts.gstatic.com data:",
    "img-src 'self' data: blob: https:",
    "media-src 'self' data: blob:",
