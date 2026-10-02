@@ -2,13 +2,13 @@
 
 লেখক: Jillur Rahman  
 তারিখ: ২০২৬-১০-০২, Asia/Dhaka  
-এটি আগের handoff-গুলোর পরবর্তী যাচাইকৃত সংযোজন। আগের T7 documents পরিবর্তন করা হয়নি।
+এটি আগের handoff-গুলোর পরবর্তী যাচাইকৃত সংযোজন। Final consolidation-এ T7-এর মূল handoff ও QA documents backup রেখে আপডেট করা হয়েছে; প্রথম setup-এর তথ্য ইতিহাস হিসেবে সংরক্ষিত।
 
 ## ১. যাচাইকৃত বর্তমান ফলাফল
 
 OmniRoute Agent Bridge-এর বর্তমান native Claude Code workflow production runtime-এ পরীক্ষা করে ঠিক করা হয়েছে। Final build-এ ১৩টি configured model-এর ১২টিতে পূর্ণ native CLI request সফল। Sonnet 4.5-এর normal pool request সফল হয়নি: একটি connection-কে upstream usage API active-critical weekly limit দেখাচ্ছে, অন্য connection exact model-এ 404 দিচ্ছে। এই exception সমাধান হয়েছে বলা যাবে না। আগে একই model সফল হয়েছিল; quota/availability সময়ের সঙ্গে বদলেছে। একসঙ্গে চারটি পৃথক conversation, তাদের নিজস্ব context resume এবং একটি streaming request বাতিল করার পর বাকি তিনটি stream সম্পন্ন হওয়ার পরীক্ষা সফল। এই ফল নির্দিষ্ট বর্তমান build ও account/provider অবস্থার প্রমাণ; ভবিষ্যৎ app, provider বা model-এর সব পরিবর্তন সফল হবে এমন নিশ্চয়তা নয়।
 
-বর্তমান runtime: OmniRoute `3.8.51`, compiled `BUILD_SHA=f002e7654`; production Node `24.15.0`; native Claude Code `2.1.287`। Source branch `nexalance` ও overlay branch `fix/agent-bridge-update-durability` একই final commit-এ আছে। Generic upstream branch `fix/native-agent-bridge-transport`-এর final commit `ef90346e2`।
+বর্তমান runtime: OmniRoute `3.8.51`, compiled `BUILD_SHA=f002e7654`; production Node `24.15.0`; native Claude Code `2.1.287`। Runtime code এবং overlay fix worktree-এর tested commit `f002e7654`। Production source branch `nexalance`-এ তার পরে documentation/QA tooling commits আছে; সেগুলো executable code পরিবর্তন করে না। Generic upstream branch `fix/native-agent-bridge-transport`-এর tested commit `ef90346e2`।
 
 ## ২. আমরা configuration-এর বাইরে code পরিবর্তন করেছি কি?
 
