@@ -71,5 +71,17 @@
   "tests/unit/cli-serve-port-in-use-preflight.test.mjs": {
     "pr": 15323,
     "state": "OPEN"
+  },
+  "src/mitm/manager.ts": {
+    "pr": 15323,
+    "state": "OPEN"
+  },
+  "src/mitm/processLifecycle.ts": {
+    "pr": 15323,
+    "state": "OPEN"
+  },
+  "tests/unit/agent-bridge-lifecycle.test.ts": {
+    "pr": 15323,
+    "state": "OPEN"
   }
 }

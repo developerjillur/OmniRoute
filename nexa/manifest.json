@@ -7,14 +7,14 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 70,
+    "total": 72,
     "patches": 46,
-    "new": 22,
+    "new": 24,
     "tooling": 2,
-    "upstreamCandidates": 2,
+    "upstreamCandidates": 4,
     "nexaSpecific": 19,
     "needsReview": 49,
-    "pendingUpstreamPR": 4,
+    "pendingUpstreamPR": 7,
     "mergedUpstreamPR": 0
   },
   "items": [
@@ -334,7 +334,10 @@
       "class": "nexa-specific",
       "target": "src/mitm/manager.ts",
       "conflictRisk": "on-overlap",
-      "upstreamPR": null
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/src__mitm__server.cjs.patch",
@@ -506,12 +509,34 @@
       "upstreamPR": null
     },
     {
+      "file": "new/src/mitm/processLifecycle.ts",
+      "layer": "new",
+      "class": "upstream-candidate",
+      "target": "src/mitm/processLifecycle.ts",
+      "conflictRisk": "none",
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
+    },
+    {
       "file": "new/src/mitm/runtimeState.ts",
       "layer": "new",
       "class": "nexa-specific",
       "target": "src/mitm/runtimeState.ts",
       "conflictRisk": "none",
       "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-lifecycle.test.ts",
+      "layer": "new",
+      "class": "upstream-candidate",
+      "target": "tests/unit/agent-bridge-lifecycle.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
     },
     {
       "file": "new/tests/unit/agent-bridge-native-transport.test.ts",

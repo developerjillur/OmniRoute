@@ -27,7 +27,7 @@ cat > "$PLIST" <<XML
 XML
 chown root:wheel "$APPDIR" "$PLIST"; chmod 755 "$APPDIR"; chmod 644 "$PLIST"
 plutil -lint "$PLIST"
-launchctl bootout "system/$LABEL" 2>/dev/null || true
-launchctl enable "system/$LABEL"
-launchctl bootstrap system "$PLIST"
+MODE=reload
+if cmp -s "$APPDIR/native-ingress-$STAMP.mjs" "$SOURCE" && cmp -s "$APPDIR/daemon-$STAMP.plist" "$PLIST"; then MODE=keep; fi
+/bin/bash "$HERE/bootstrap-launchdaemon.sh" "$LABEL" "$PLIST" "$MODE"
 echo 'Native HTTPS ingress installed. Binds loopback only, then runs as nobody. No hosts or trust settings changed.'
