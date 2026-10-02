@@ -18,6 +18,9 @@ if (!files.some((file) => file.endsWith("agent-bridge-legacy-claude-thinking.tes
 if (!files.some((file) => file.endsWith("agent-bridge-resilience.test.ts"))) {
   throw new Error("Native Bridge resilience suite is missing");
 }
+if (!files.some((file) => file.endsWith("agent-bridge-thread-cache.test.ts"))) {
+  throw new Error("Native thread cache-budget suite is missing");
+}
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "bridge-regression-data-"));
 console.log(`Bridge regression: ${files.length} files, serial execution, isolated data directory`);
 const result = spawnSync(

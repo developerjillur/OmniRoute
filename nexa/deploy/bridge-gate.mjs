@@ -58,6 +58,12 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
         .includes("modelSupportsContext1mBeta(claudeModel)")
     )
       throw new Error("Archive forces unsupported legacy Claude long-context beta");
+    const threadCache = read("package/open-sse/services/claudeCodeConstraints.ts").toString();
+    if (
+      !threadCache.includes("getCacheControlBudget(body)") ||
+      !threadCache.includes("enforceCacheControlLimit(body);")
+    )
+      throw new Error("Archive exceeds the native thread cache-marker budget");
     const processState = read(lifecycleMember).toString();
     const runtimeManager = read("package/dist/src/mitm/manager.ts").toString();
     if (
