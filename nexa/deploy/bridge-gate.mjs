@@ -25,7 +25,7 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
     maxBuffer: 16 * 1024 * 1024,
   }).split("\n");
   const read = (member) =>
-    execFileSync("tar", ["-xOf", archive, member], { maxBuffer: 16 * 1024 * 1024 });
+    execFileSync("tar", ["-xOf", archive, member], { maxBuffer: 64 * 1024 * 1024 });
   const cliPid = read("package/bin/cli/utils/pid.mjs").toString();
   if (!cliPid.includes('"-sTCP:LISTEN"'))
     throw new Error("Archive has the client-socket false-positive startup bug");
@@ -72,11 +72,36 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
     )
       throw new Error("Archive silently drops native Claude protocol negotiation");
     if (
-      !read("package/src/app/api/v1/messages/count_tokens/route.ts")
+      !read("package/open-sse/executors/base.ts")
         .toString()
-        .includes("clientHeaders: Object.fromEntries(request.headers.entries())")
+        .includes("this.buildHeaders(credentials, false, clientHeaders, model, undefined, body)")
     )
-      throw new Error("Archive drops native token-count protocol headers");
+      throw new Error("Archive loses body-dependent token-count header eligibility");
+    const countRoute = read(
+      "package/dist/.build/next/server/app/api/v1/messages/count_tokens/route.js"
+    ).toString();
+    const countChunks = [...countRoute.matchAll(/R\.c\("(server\/chunks\/[^"\n]+)"\)/g)].map(
+      (match) => `package/dist/.build/next/${match[1]}`
+    );
+    execFileSync(
+      "python3",
+      [
+        "-c",
+        `
+import json,re,sys,tarfile
+wanted=set(json.loads(sys.argv[2]))
+pattern=rb'countTokens[\\s\\S]{0,180}clientHeaders:Object\\.fromEntries\\([^)]*\\.headers\\.entries\\(\\)\\),signal:'
+with tarfile.open(sys.argv[1], 'r|gz') as archive:
+    for member in archive:
+        if member.name in wanted and re.search(pattern,archive.extractfile(member).read()):
+            sys.exit(0)
+raise SystemExit('Compiled token-count route drops native protocol headers or cancellation')
+`,
+        archive,
+        JSON.stringify(countChunks),
+      ],
+      { stdio: "pipe", maxBuffer: 1024 * 1024 }
+    );
     const processState = read(lifecycleMember).toString();
     const runtimeManager = read("package/dist/src/mitm/manager.ts").toString();
     if (

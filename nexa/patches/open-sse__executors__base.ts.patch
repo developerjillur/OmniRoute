@@ -1,5 +1,5 @@
 diff --git a/open-sse/executors/base.ts b/open-sse/executors/base.ts
-index f35138f44..a3deff6b5 100644
+index f35138f44..28e0414fd 100644
 --- a/open-sse/executors/base.ts
 +++ b/open-sse/executors/base.ts
 @@ -234,6 +234,7 @@ export type ExecuteInput = {
@@ -21,7 +21,7 @@ index f35138f44..a3deff6b5 100644
      this.assertOutboundUrlAllowed(url); // GHSA-4f49
  
 -    const headers = this.buildHeaders(credentials, false);
-+    const headers = this.buildHeaders(credentials, false, clientHeaders, model);
++    const headers = this.buildHeaders(credentials, false, clientHeaders, model, undefined, body);
      const requestBody =
        body && typeof body === "object"
          ? {
