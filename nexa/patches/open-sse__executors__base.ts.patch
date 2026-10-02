@@ -1,8 +1,54 @@
 diff --git a/open-sse/executors/base.ts b/open-sse/executors/base.ts
-index f35138f44..8e4b6e136 100644
+index f35138f44..a3deff6b5 100644
 --- a/open-sse/executors/base.ts
 +++ b/open-sse/executors/base.ts
-@@ -1096,6 +1096,16 @@ export class BaseExecutor {
+@@ -234,6 +234,7 @@ export type ExecuteInput = {
+ };
+ 
+ export type CountTokensInput = {
++  clientHeaders?: Record<string, string> | null;
+   body: Record<string, unknown>;
+   credentials: ProviderCredentials;
+   log?: ExecutorLog | null;
+@@ -664,12 +665,12 @@ export class BaseExecutor {
+     return query ? `${normalizedPath}?${query}` : normalizedPath;
+   }
+ 
+-  async countTokens({ model, body, credentials, signal, log }: CountTokensInput) {
++  async countTokens({ model, body, credentials, signal, log, clientHeaders }: CountTokensInput) {
+     const url = this.buildCountTokensUrl(model, credentials);
+     if (!url) return null;
+     this.assertOutboundUrlAllowed(url); // GHSA-4f49
+ 
+-    const headers = this.buildHeaders(credentials, false);
++    const headers = this.buildHeaders(credentials, false, clientHeaders, model);
+     const requestBody =
+       body && typeof body === "object"
+         ? {
+@@ -678,6 +679,22 @@ export class BaseExecutor {
+           }
+         : { model };
+ 
++    if (this.provider === "claude") {
++      const nativeClient =
++        clientHeaders?.["x-app"] === "cli" ||
++        /claude-(?:code|cli)/i.test(clientHeaders?.["user-agent"] || "");
++      const clientBeta =
++        clientHeaders?.["anthropic-beta"] ?? clientHeaders?.["Anthropic-Beta"] ?? null;
++      headers["anthropic-beta"] = mergeClientAnthropicBeta(
++        headers["anthropic-beta"] || "",
++        clientBeta,
++        undefined,
++        model,
++        requestBody,
++        nativeClient
++      );
++    }
++
+     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+     let activeSignal = signal || null;
+     let controller: AbortController | null = null;
+@@ -1096,6 +1113,16 @@ export class BaseExecutor {
              // must opt in with x-omniroute-thinking; force-injecting adaptive thinking
              // leaks non-standard reasoning replay fields back into those clients.
              const isHaiku = typeof tb.model === "string" && tb.model.includes("haiku");
@@ -19,7 +65,7 @@ index f35138f44..8e4b6e136 100644
              // #5312 RC-B: honor the operator's proxy-level Thinking-Budget mode.
              // `auto` means "strip — let the provider decide", so suppress the default
              // adaptive injection. Passthrough/no-config keeps the native Claude Code
-@@ -1111,7 +1121,11 @@ export class BaseExecutor {
+@@ -1111,7 +1138,11 @@ export class BaseExecutor {
                delete tb.thinking;
                delete tb.context_management;
                delete tb.output_config;
@@ -32,7 +78,7 @@ index f35138f44..8e4b6e136 100644
                tb.thinking = { type: "adaptive" };
                tb.context_management = {
                  edits: [{ type: "clear_thinking_20251015", keep: "all" }],
-@@ -1122,7 +1136,11 @@ export class BaseExecutor {
+@@ -1122,7 +1153,11 @@ export class BaseExecutor {
              // When an operator budget (custom/adaptive mode) produced an enabled block
              // upstream, remap it to adaptive + output_config.effort here.
              const th = tb.thinking as Record<string, unknown> | undefined;
@@ -45,3 +91,13 @@ index f35138f44..8e4b6e136 100644
                const b = typeof th.budget_tokens === "number" ? th.budget_tokens : 0;
                tb.thinking = { type: "adaptive" };
                tb.output_config = {
+@@ -1264,7 +1299,8 @@ export class BaseExecutor {
+                 // model that does not qualify (e.g. Haiku), which Anthropic rejects (#10119).
+                 model,
+                 // Gate skills-2025-10-02 on presence of code_execution tool in transformed body (#14200):
+-                tb
++                tb,
++                this.provider === "claude" && Boolean(isClaudeCodeClient)
+               ),
+               "anthropic-dangerous-direct-browser-access": "true",
+               "x-app": "cli",

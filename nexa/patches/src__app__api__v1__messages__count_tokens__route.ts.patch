@@ -1,0 +1,13 @@
+diff --git a/src/app/api/v1/messages/count_tokens/route.ts b/src/app/api/v1/messages/count_tokens/route.ts
+index be27e79a4..db0107ca5 100644
+--- a/src/app/api/v1/messages/count_tokens/route.ts
++++ b/src/app/api/v1/messages/count_tokens/route.ts
+@@ -83,6 +83,8 @@ export async function POST(request) {
+         model: modelInfo.model,
+         body,
+         credentials,
++        clientHeaders: Object.fromEntries(request.headers.entries()),
++        signal: request.signal,
+         log,
+       })
+     );

@@ -64,6 +64,19 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
       !threadCache.includes("enforceCacheControlLimit(body);")
     )
       throw new Error("Archive exceeds the native thread cache-marker budget");
+    if (
+      !read("package/open-sse/config/anthropicHeaders.ts")
+        .toString()
+        .includes("preserveNativeClientBetas") ||
+      !read("package/open-sse/executors/base.ts").toString().includes("Boolean(isClaudeCodeClient)")
+    )
+      throw new Error("Archive silently drops native Claude protocol negotiation");
+    if (
+      !read("package/src/app/api/v1/messages/count_tokens/route.ts")
+        .toString()
+        .includes("clientHeaders: Object.fromEntries(request.headers.entries())")
+    )
+      throw new Error("Archive drops native token-count protocol headers");
     const processState = read(lifecycleMember).toString();
     const runtimeManager = read("package/dist/src/mitm/manager.ts").toString();
     if (

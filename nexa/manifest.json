@@ -7,13 +7,13 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 80,
-    "patches": 51,
-    "new": 27,
+    "total": 83,
+    "patches": 53,
+    "new": 28,
     "tooling": 2,
     "upstreamCandidates": 9,
     "nexaSpecific": 19,
-    "needsReview": 52,
+    "needsReview": 55,
     "pendingUpstreamPR": 12,
     "mergedUpstreamPR": 0
   },
@@ -167,6 +167,14 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/open-sse__services__claudeCodeConstraints.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "open-sse/services/claudeCodeConstraints.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/open-sse__utils__earlyStreamKeepalive.ts.patch",
       "layer": "patch",
       "class": "needs-review",
@@ -291,6 +299,14 @@
       "layer": "patch",
       "class": "needs-review",
       "target": "src/app/api/v1/chat/completions/route.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__app__api__v1__messages__count_tokens__route.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/app/api/v1/messages/count_tokens/route.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },
@@ -641,6 +657,14 @@
       "layer": "new",
       "class": "nexa-specific",
       "target": "tests/unit/agent-bridge-selected-dns.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-thread-cache.test.ts",
+      "layer": "new",
+      "class": "needs-review",
+      "target": "tests/unit/agent-bridge-thread-cache.test.ts",
       "conflictRisk": "none",
       "upstreamPR": null
     },
