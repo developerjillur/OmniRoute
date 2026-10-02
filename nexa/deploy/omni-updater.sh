@@ -72,7 +72,7 @@ if ! (
   node --test nexa/deploy/bootstrap-launchdaemon.test.mjs nexa/deploy/native-ingress.test.mjs &&
   NODE_OPTIONS=--max-old-space-size=8192 node scripts/check/check-tsc-ratchet.mjs --ratchet | tee "$OUTDIR/tsc-ratchet.log" &&
   ! grep -q 'tscErrors=SKIP' "$OUTDIR/tsc-ratchet.log" &&
-  node --import tsx/esm --test tests/unit/agent-bridge-native-transport.test.ts tests/unit/agent-bridge-runtime-state.test.ts tests/unit/agent-bridge-lifecycle.test.ts tests/unit/traffic-inspector-event-stream.test.ts tests/unit/agent-bridge-selected-dns.test.ts tests/unit/security/audit-remediation.test.ts tests/unit/security/audit-remediation-guards.test.ts tests/unit/provider-validation-ssrf-guard.test.ts tests/unit/combo-diagnostics-trace.test.ts tests/unit/idempotency-fusion-collision.test.ts tests/unit/mitm-server-claude-code-routing.test.ts &&
+  node --import tsx/esm --test tests/unit/agent-bridge-native-transport.test.ts tests/unit/agent-bridge-runtime-state.test.ts tests/unit/agent-bridge-lifecycle.test.ts tests/unit/agent-bridge-client-beta.test.ts tests/unit/traffic-inspector-event-stream.test.ts tests/unit/agent-bridge-selected-dns.test.ts tests/unit/security/audit-remediation.test.ts tests/unit/security/audit-remediation-guards.test.ts tests/unit/provider-validation-ssrf-guard.test.ts tests/unit/combo-diagnostics-trace.test.ts tests/unit/idempotency-fusion-collision.test.ts tests/unit/mitm-server-claude-code-routing.test.ts &&
   npm run build:release && npm run build:cli-api && npm run build:cli &&
   OMNIROUTE_ALLOW_CANARY_BUILD=1 npm run check:pack-artifact &&
   "${NPM[@]}" pack --pack-destination "$OUTDIR"

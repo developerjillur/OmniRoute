@@ -44,6 +44,12 @@ export function verifyPackage(archive, { allowPriorLifecycle = false } = {}) {
   const lifecyclePresent = members.includes(lifecycleMember);
   if (!allowPriorLifecycle) {
     if (!lifecyclePresent) throw new Error("Archive lacks shared Bridge process ownership");
+    if (
+      !read("package/open-sse/config/anthropicHeaders.ts")
+        .toString()
+        .includes("message-threads-2026-08-12")
+    )
+      throw new Error("Archive drops native message-thread beta negotiation");
     const processState = read(lifecycleMember).toString();
     const runtimeManager = read("package/dist/src/mitm/manager.ts").toString();
     if (

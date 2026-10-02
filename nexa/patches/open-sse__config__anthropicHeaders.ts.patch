@@ -1,0 +1,13 @@
+diff --git a/open-sse/config/anthropicHeaders.ts b/open-sse/config/anthropicHeaders.ts
+index f26e92e32..2df313f0a 100644
+--- a/open-sse/config/anthropicHeaders.ts
++++ b/open-sse/config/anthropicHeaders.ts
+@@ -252,6 +252,8 @@ export function syncSkillsBeta(
+  * not negotiate `anthropic_beta` at all.
+  */
+ export const FORWARDABLE_CLIENT_BETAS = Object.freeze([
++  // Native message-thread fields require the client-negotiated beta.
++  "message-threads-2026-08-12",
+   "tool-search-tool-2025-10-19",
+   "context-1m-2025-08-07",
+   "code-execution-2025-08-25",

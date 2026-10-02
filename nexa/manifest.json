@@ -7,14 +7,14 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 72,
-    "patches": 46,
-    "new": 24,
+    "total": 74,
+    "patches": 47,
+    "new": 25,
     "tooling": 2,
-    "upstreamCandidates": 4,
+    "upstreamCandidates": 6,
     "nexaSpecific": 19,
     "needsReview": 49,
-    "pendingUpstreamPR": 7,
+    "pendingUpstreamPR": 9,
     "mergedUpstreamPR": 0
   },
   "items": [
@@ -116,6 +116,17 @@
       "target": "next.config.mjs",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
+    },
+    {
+      "file": "patches/open-sse__config__anthropicHeaders.ts.patch",
+      "layer": "patch",
+      "class": "upstream-candidate",
+      "target": "open-sse/config/anthropicHeaders.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
     },
     {
       "file": "patches/open-sse__services____tests____antigravity-quota-family.test.ts.patch",
@@ -526,6 +537,17 @@
       "target": "src/mitm/runtimeState.ts",
       "conflictRisk": "none",
       "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/agent-bridge-client-beta.test.ts",
+      "layer": "new",
+      "class": "upstream-candidate",
+      "target": "tests/unit/agent-bridge-client-beta.test.ts",
+      "conflictRisk": "none",
+      "upstreamPR": {
+        "pr": 15323,
+        "state": "OPEN"
+      }
     },
     {
       "file": "new/tests/unit/agent-bridge-lifecycle.test.ts",
