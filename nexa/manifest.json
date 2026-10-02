@@ -7,13 +7,13 @@
   "productionBranch": "nexalance",
   "generatedFrom": "live nexa/ contents",
   "counts": {
-    "total": 46,
-    "patches": 31,
-    "new": 13,
+    "total": 49,
+    "patches": 33,
+    "new": 14,
     "tooling": 2,
     "upstreamCandidates": 26,
     "nexaSpecific": 6,
-    "needsReview": 14,
+    "needsReview": 17,
     "pendingUpstreamPR": 0,
     "mergedUpstreamPR": 0
   },
@@ -187,6 +187,14 @@
       "upstreamPR": null
     },
     {
+      "file": "patches/src__app__api__system__version__route.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/app/api/system/version/route.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
       "file": "patches/src__app__api__v1__chat__completions__route.ts.patch",
       "layer": "patch",
       "class": "needs-review",
@@ -234,6 +242,14 @@
       "layer": "patch",
       "class": "upstream-candidate",
       "target": "src/lib/guardrails/registry.ts",
+      "conflictRisk": "on-overlap",
+      "upstreamPR": null
+    },
+    {
+      "file": "patches/src__lib__system__autoUpdate.ts.patch",
+      "layer": "patch",
+      "class": "needs-review",
+      "target": "src/lib/system/autoUpdate.ts",
       "conflictRisk": "on-overlap",
       "upstreamPR": null
     },
@@ -357,6 +373,14 @@
       "layer": "new",
       "class": "upstream-candidate",
       "target": "tests/unit/authz/__stub_apiKeys.mjs",
+      "conflictRisk": "none",
+      "upstreamPR": null
+    },
+    {
+      "file": "new/tests/unit/auto-update-command-mode.test.ts",
+      "layer": "new",
+      "class": "needs-review",
+      "target": "tests/unit/auto-update-command-mode.test.ts",
       "conflictRisk": "none",
       "upstreamPR": null
     },
