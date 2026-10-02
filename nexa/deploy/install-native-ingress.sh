@@ -40,6 +40,5 @@ MODE=reload
 if cmp -s "$APPDIR/native-ingress-$STAMP.mjs" "$SOURCE" && cmp -s "$APPDIR/omni-bind-$STAMP.pl" "$BINDER" && cmp -s "$APPDIR/daemon-$STAMP.plist" "$PLIST"; then MODE=keep; fi
 /bin/bash "$HERE/bootstrap-launchdaemon.sh" "$LABEL" "$PLIST" "$MODE"
 # macOS may retain the public vendor address across a listener transition.
-/usr/bin/dscacheutil -flushcache
-/usr/bin/killall -HUP mDNSResponder
+/usr/local/bin/node "$HERE/refresh-native-dns.mjs" --repair-if-enabled
 echo 'Native HTTPS ingress installed. Local-user-owned loopback sockets; runs as nobody. No hosts or trust settings changed.'

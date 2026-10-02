@@ -66,3 +66,9 @@ redundancy. Never write a model id into a combo without confirming it appears in
 
 Full workflow, invariants, re-cut recipe, and the deploy/rollback runbook: the **`nexa-overlay`
 skill** (`nexa/skill/nexa-overlay/`, auto-installed to `.claude/` by `setup.mjs`).
+
+Native Agent Bridge routing also requires the normal macOS resolver to use its loopback hosts
+entries. The updater rejects enabled routing that bypasses those entries; the native ingress
+installer preserves stopped intent and verifies an unchanged-content hosts reload when necessary.
+See [native DNS recovery and verification](docs/AGENT-BRIDGE-NATIVE-DNS-RECOVERY-2026-10-02.md)
+for the Local coexistence incident, native request evidence and remaining validation limits.
